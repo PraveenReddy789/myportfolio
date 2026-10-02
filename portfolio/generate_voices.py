@@ -1,0 +1,155 @@
+#!/usr/bin/env python3
+"""
+Generate natural-sounding voice clips for the "Ingest call" demo (Microsoft Edge neural TTS).
+
+Usage
+    pip install edge-tts
+    python generate_voices.py            # creates ./audio/<lang>/<line>.mp3
+    python generate_voices.py ta te      # only some languages
+    python generate_voices.py --voices   # list the Indian voices your install can see
+
+Then put the "audio" folder next to portfolio.html. Even-numbered lines (0, 2, 4, 6)
+are the AGENT (female voice); odd-numbered lines (1, 3, 5, 7) are the CUSTOMER (male voice).
+Re-run this script whenever you change the call lines.
+"""
+import asyncio, pathlib, sys
+import edge_tts
+
+# language -> (agent voice, customer voice)
+VOICES = {
+    "en": ("en-IN-NeerjaNeural",   "en-IN-PrabhatNeural"),
+    "ta": ("ta-IN-PallaviNeural",  "ta-IN-ValluvarNeural"),
+    "te": ("te-IN-ShrutiNeural",   "te-IN-MohanNeural"),
+    "ml": ("ml-IN-SobhanaNeural",  "ml-IN-MidhunNeural"),
+    "gu": ("gu-IN-DhwaniNeural",   "gu-IN-NiranjanNeural"),
+    "kn": ("kn-IN-SapnaNeural",    "kn-IN-GaganNeural"),
+    # "or" (Odia): Edge TTS has no Odia voice. The demo falls back to captions only.
+}
+
+# small human touches: the customer speaks a little slower and lower than the agent
+STYLE = {"agent": {"rate": "+0%", "pitch": "+0Hz"}, "customer": {"rate": "-4%", "pitch": "-2Hz"}}
+
+LINES = {
+    "en": [
+        "Hello, this is Samvaad calling about your loan EMI.",
+        "Yes, please go ahead.",
+        "Your EMI of INR 12,500 was due on 20 September.",
+        "Yes, my salary came late this month.",
+        "I understand. When can you make the payment?",
+        "I can pay INR 4,500 by 7 October.",
+        "Thank you. I have noted INR 4,500 by 7 October.",
+        "Okay, thank you."
+    ],
+    "ta": [
+        "வணக்கம், நான் சம்வாத் அழைக்கிறேன், உங்கள் கடன் EMI பற்றி.",
+        "ஆமாம், சொல்லுங்கள்.",
+        "உங்கள் ₹12,500 EMI செப்டம்பர் 20 அன்று செலுத்த வேண்டியது.",
+        "ஆமாம், இந்த மாதம் சம்பளம் தாமதமாக வந்தது.",
+        "புரிகிறது. எப்போது செலுத்த முடியும்?",
+        "அக்டோபர் 7க்குள் ₹4,500 செலுத்துகிறேன்.",
+        "நன்றி. அக்டோபர் 7க்குள் ₹4,500 என்று குறித்துக்கொண்டேன்.",
+        "சரி, நன்றி."
+    ],
+    "te": [
+        "నమస్కారం, నేను సంవాద్ నుండి మాట్లాడుతున్నాను, మీ లోన్ EMI గురించి.",
+        "అవును, చెప్పండి.",
+        "మీ ₹12,500 EMI సెప్టెంబర్ 20 న చెల్లించాల్సి ఉంది.",
+        "అవును, ఈ నెల జీతం ఆలస్యంగా వచ్చింది.",
+        "అర్థమైంది. ఎప్పుడు చెల్లించగలరు?",
+        "అక్టోబర్ 7 లోపు ₹4,500 చెల్లిస్తాను.",
+        "ధన్యవాదాలు. అక్టోబర్ 7 లోపు ₹4,500 అని నమోదు చేశాను.",
+        "సరే, ధన్యవాదాలు."
+    ],
+    "ml": [
+        "നമസ്കാരം, ഞാൻ സംവാദിൽ നിന്നാണ് വിളിക്കുന്നത്, നിങ്ങളുടെ വായ്പ EMI സംബന്ധിച്ച്.",
+        "ശരി, പറയൂ.",
+        "നിങ്ങളുടെ ₹12,500 EMI സെപ്റ്റംബർ 20-ന് അടയ്ക്കേണ്ടതായിരുന്നു.",
+        "അതെ, ഈ മാസം ശമ്പളം വൈകിയാണ് കിട്ടിയത്.",
+        "മനസ്സിലായി. എപ്പോൾ അടയ്ക്കാൻ കഴിയും?",
+        "ഒക്ടോബർ 7-നകം ₹4,500 അടയ്ക്കാം.",
+        "നന്ദി. ഒക്ടോബർ 7-നകം ₹4,500 എന്ന് രേഖപ്പെടുത്തി.",
+        "ശരി, നന്ദി."
+    ],
+    "gu": [
+        "નમસ્તે, હું સંવાદમાંથી બોલું છું, તમારી લોન EMI વિશે.",
+        "હા, બોલો.",
+        "તમારી ₹12,500 ની EMI 20 સપ્ટેમ્બરે ભરવાની હતી.",
+        "હા, આ મહિને પગાર મોડો આવ્યો.",
+        "સમજ્યો. તમે ક્યારે ચૂકવણી કરી શકશો?",
+        "7 ઓક્ટોબર સુધીમાં ₹4,500 ભરી દઈશ.",
+        "આભાર. 7 ઓક્ટોબર સુધીમાં ₹4,500 નોંધ્યા છે.",
+        "સારું, આભાર."
+    ],
+    "or": [
+        "ନମସ୍କାର, ମୁଁ ସଂବାଦରୁ କହୁଛି, ଆପଣଙ୍କ ଲୋନ୍ EMI ବିଷୟରେ।",
+        "ହଁ, କୁହନ୍ତୁ।",
+        "ଆପଣଙ୍କ ₹12,500 EMI ସେପ୍ଟେମ୍ବର 20 ରେ ଦେୟ ଥିଲା।",
+        "ହଁ, ଏହି ମାସ ଦରମା ଡେରିରେ ଆସିଲା।",
+        "ବୁଝିଲି। ଆପଣ କେବେ ଦେଇପାରିବେ?",
+        "ଅକ୍ଟୋବର 7 ସୁଦ୍ଧା ₹4,500 ଦେବି।",
+        "ଧନ୍ୟବାଦ। ଅକ୍ଟୋବର 7 ସୁଦ୍ଧା ₹4,500 ଲେଖିନେଲି।",
+        "ଠିକ୍ ଅଛି, ଧନ୍ୟବାଦ।"
+    ],
+    "kn": [
+        "ನಮಸ್ಕಾರ, ನಾನು ಸಂವಾದ್‌ನಿಂದ ಕರೆ ಮಾಡುತ್ತಿದ್ದೇನೆ, ನಿಮ್ಮ ಸಾಲದ EMI ಬಗ್ಗೆ.",
+        "ಹೌದು, ಹೇಳಿ.",
+        "ನಿಮ್ಮ ₹12,500 EMI ಸೆಪ್ಟೆಂಬರ್ 20 ರಂದು ಪಾವತಿಸಬೇಕಿತ್ತು.",
+        "ಹೌದು, ಈ ತಿಂಗಳು ಸಂಬಳ ತಡವಾಗಿ ಬಂತು.",
+        "ಅರ್ಥವಾಯಿತು. ನೀವು ಯಾವಾಗ ಪಾವತಿಸಬಹುದು?",
+        "ಅಕ್ಟೋಬರ್ 7 ರೊಳಗೆ ₹4,500 ಪಾವತಿಸುತ್ತೇನೆ.",
+        "ಧನ್ಯವಾದಗಳು. ಅಕ್ಟೋಬರ್ 7 ರೊಳಗೆ ₹4,500 ಎಂದು ದಾಖಲಿಸಿದ್ದೇನೆ.",
+        "ಸರಿ, ಧನ್ಯವಾದಗಳು."
+    ]
+}
+
+OUT = pathlib.Path(__file__).resolve().parent / "audio"
+
+
+async def synth(sem, lang, i, text, voice, role):
+    path = OUT / lang / f"{i}.mp3"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    err = None
+    async with sem:
+        for _ in range(3):
+            try:
+                st = STYLE[role]
+                await edge_tts.Communicate(text, voice, rate=st["rate"], pitch=st["pitch"]).save(str(path))
+                if path.stat().st_size > 0:
+                    print(f"ok   {lang}/{i}.mp3  {voice}")
+                    return True
+            except Exception as e:  # network hiccup: retry
+                err = e
+                await asyncio.sleep(1.5)
+    print(f"FAIL {lang}/{i}.mp3  {voice}  ({err})")
+    return False
+
+
+async def main(langs):
+    avail = {v["ShortName"] for v in await edge_tts.list_voices()}
+    sem = asyncio.Semaphore(4)
+    jobs = []
+    for lang in langs:
+        if lang not in VOICES:
+            print(f"skip {lang}: no Edge TTS voice (captions only in the demo)")
+            continue
+        agent, cust = VOICES[lang]
+        for v in (agent, cust):
+            if v not in avail:
+                print(f"warning: voice {v} not found in your edge-tts voice list")
+        for i, text in enumerate(LINES[lang]):
+            role = "agent" if i % 2 == 0 else "customer"
+            jobs.append(synth(sem, lang, i, text, agent if role == "agent" else cust, role))
+    res = await asyncio.gather(*jobs)
+    print(f"\nDone: {sum(res)}/{len(res)} clips in {OUT}")
+
+
+if __name__ == "__main__":
+    args = sys.argv[1:]
+    if "--voices" in args:
+        async def show():
+            for v in await edge_tts.list_voices():
+                if v["Locale"].endswith("-IN"):
+                    print(v["ShortName"], v["Gender"])
+        asyncio.run(show())
+    else:
+        asyncio.run(main(args or list(LINES)))
