@@ -103,18 +103,35 @@ LINES = {
     ]
 }
 
+# phonetic replacements for TTS engines to pronounce acronyms distinctly (e.g. E-M-I instead of 'yemi')
+TTS_PRONUNCIATIONS = {
+    "en": {"EMI": "E-M-I"},
+    "ta": {"EMI": "ஈ எம் ஐ"},
+    "te": {"EMI": "ఈ ఎం ఐ"},
+    "ml": {"EMI": "ഇ എം ഐ"},
+    "gu": {"EMI": "ઈ એમ આઈ"},
+    "kn": {"EMI": "ಈ ಎಂ ಐ"},
+    "or": {"EMI": "ଇ ଏମ୍ ଆଇ"},
+}
+
+def get_tts_text(lang, text):
+    for word, replacement in TTS_PRONUNCIATIONS.get(lang, {}).items():
+        text = text.replace(word, replacement)
+    return text
+
 OUT = pathlib.Path(__file__).resolve().parent / "audio"
 
 
 async def synth(sem, lang, i, text, voice, role):
     path = OUT / lang / f"{i}.mp3"
     path.parent.mkdir(parents=True, exist_ok=True)
+    spoken_text = get_tts_text(lang, text)
     err = None
     async with sem:
         for _ in range(3):
             try:
                 st = STYLE[role]
-                await edge_tts.Communicate(text, voice, rate=st["rate"], pitch=st["pitch"]).save(str(path))
+                await edge_tts.Communicate(spoken_text, voice, rate=st["rate"], pitch=st["pitch"]).save(str(path))
                 if path.stat().st_size > 0:
                     print(f"ok   {lang}/{i}.mp3  {voice}")
                     return True
