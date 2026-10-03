@@ -3344,12 +3344,33 @@
                     a.muted = false; a.src = src; var pr = a.play(); if (pr && pr.catch) pr.catch(function () { f(false) }); tm = setTimeout(function () { f(false); a.pause() }, 15000)
                 })
             }
-            async function say(t, ag, l, k, pers) { if (!snd) return false; if (pers) { var okp = await playCustom(k); if (okp) return true; if (!snd) return false; if (TTS_ENDPOINT && l !== 'or') { var okg = await playClip(l, k); if (okg) return true; if (!snd) return false } return sayTTS(t, ag, l) } var ck = l + (fcm ? 'f' : ''); if (!CF[ck]) { var ok = await playClip(l, k); if (ok) return true; if (!snd) return false; CF[ck] = true } return sayTTS(t, ag, l) }
+            async function say(t, ag, l, k, pers) {
+                if (!snd) return false;
+                if (pers) {
+                    var okp = await playCustom(k);
+                    if (okp) return true;
+                    if (!snd) return false;
+                    if (l !== 'or') {
+                        var okg = await playClip(l, k);
+                        if (okg) return true;
+                        if (!snd) return false;
+                    }
+                    return sayTTS(t, ag, l);
+                }
+                var ck = l + (fcm ? 'f' : '');
+                if (!CF[ck]) {
+                    var ok = await playClip(l, k);
+                    if (ok) return true;
+                    if (!snd) return false;
+                    CF[ck] = true;
+                }
+                return sayTTS(t, ag, l);
+            }
             function sayTTS(t, ag, l) {
                 return new Promise(function (res) {
-                    var m = pickV(l).sort(function (x, y) { return natScore(y) - natScore(x) }); if (!snd || !window.speechSynthesis || !m.length) { res(false); return } console.warn('Samvaad demo: browser voice used for a line (' + l + '); the Edge neural clip was not available');
-                    var u = new SpeechSynthesisUtterance(ttsFix(l, t)), a = m.filter(isF)[0] || m[0], c = m.filter(function (v) { return v !== a && !isF(v) })[0] || m.filter(function (v) { return v !== a })[0] || a, fem = (ag !== fcm), v = fem ? a : c, same = a === c, done = false, tm;
-                    u.voice = v; u.lang = v.lang; u.pitch = fem ? (same ? 1.2 : 1) : (same ? .78 : 1); u.rate = ag ? 1 : .95;
+                    var m = pickV(l).sort(function (x, y) { return natScore(y) - natScore(x) }); if (!snd || !window.speechSynthesis || !m.length) { res(false); return }
+                    var u = new SpeechSynthesisUtterance(ttsFix(l, t)), a = m.filter(isF)[0] || m[0], c = m.filter(function (v) { return v !== a && !isF(v) })[0] || m.filter(function (v) { return v !== a })[0] || a, fem = (ag !== fcm), v = fem ? a : c, done = false, tm;
+                    u.voice = v; u.lang = v.lang; u.pitch = 1.0; u.rate = 0.92;
                     function f() { if (!done) { done = true; clearTimeout(tm); res(true) } }
                     tm = setTimeout(f, Math.max(3500, t.length * 170)); u.onend = f; u.onerror = f; speechSynthesis.speak(u)
                 })
@@ -3364,9 +3385,8 @@
             window.addEventListener('pagehide', function () { if (window.speechSynthesis) speechSynthesis.cancel() });
 
             /* ===== personalised call: viewer enters a name, the agent addresses them respectfully ===== */
-            /* To get a natural neural voice for the name lines, host tts_server.py and put its URL here,
-               e.g. 'https://your-host.example.com/tts'. Left empty, the name lines use the browser voice. */
-            var TTS_ENDPOINT = '';
+            /* Point to tts_server.py endpoint (defaults to local server on port 8000 when running locally) */
+            var TTS_ENDPOINT = (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.protocol === 'file:')) ? 'http://127.0.0.1:8000/tts' : '';
             var cname = '', cgen = 'M', gtouch = false, fcm = false, PC = {}, formOn = false, warmed = false;
             var HON = {
                 en: { M: 'Mr. {n}', F: 'Ms. {n}' },

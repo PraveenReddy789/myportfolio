@@ -30,10 +30,8 @@ VOICES = {
     # "or" (Odia): Edge TTS has no Odia voice. The demo falls back to captions only.
 }
 
-# Phone-call pacing: slightly slower than the default read-aloud speed, customer a touch more relaxed.
-# Rate only - pitch shifting is what makes neural voices sound processed, so pitch stays at 0.
-# If it still feels fast/slow, change these two numbers (e.g. "-8%" slower, "+0%" default).
-STYLE = {"agent": {"rate": "-4%", "pitch": "+0Hz"}, "customer": {"rate": "-7%", "pitch": "+0Hz"}}
+# Phone-call pacing: natural relaxed pacing for both agent and customer (-7% rate, +0Hz pitch)
+STYLE = {"agent": {"rate": "-7%", "pitch": "+0Hz"}, "customer": {"rate": "-7%", "pitch": "+0Hz"}}
 
 LINES = {
     "en": [
