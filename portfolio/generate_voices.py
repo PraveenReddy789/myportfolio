@@ -8,8 +8,12 @@ Usage
     python generate_voices.py ta te      # only some languages
     python generate_voices.py --voices   # list the Indian voices your install can see
 
-Then put the "audio" folder next to portfolio.html. Even-numbered lines (0, 2, 4, 6)
-are the AGENT (female voice); odd-numbered lines (1, 3, 5, 7) are the CUSTOMER (male voice).
+Then put the "audio" folder next to index.html. Even-numbered lines (0, 2, 4, 6)
+are the AGENT; odd-numbered lines (1, 3, 5, 7) are the CUSTOMER.
+
+Two sets are generated per language:
+    audio/<lang>/<n>.mp3      agent = female voice, customer = male voice     (male / no name)
+    audio/<lang>/fc/<n>.mp3   agent = male voice,   customer = female voice   (female viewer name)
 Re-run this script whenever you change the call lines.
 """
 import asyncio, pathlib, sys
@@ -76,7 +80,7 @@ LINES = {
         "હા, બોલો.",
         "તમારી ₹12,500 ની EMI 20 સપ્ટેમ્બરે ભરવાની હતી.",
         "હા, આ મહિને પગાર મોડો આવ્યો.",
-        "સમજ્યો. તમે ક્યારે ચૂકવણી કરી શકશો?",
+        "સમજાયું. તમે ક્યારે ચૂકવણી કરી શકશો?",
         "7 ઓક્ટોબર સુધીમાં પૂરી રકમ ₹12,500 ભરી દઈશ.",
         "આભાર. 7 ઓક્ટોબર સુધીમાં પૂરી ₹12,500 ની ચુકવણી નોંધાઈ ગઈ છે.",
         "સારું, આભાર."
@@ -122,8 +126,8 @@ def get_tts_text(lang, text):
 OUT = pathlib.Path(__file__).resolve().parent / "audio"
 
 
-async def synth(sem, lang, i, text, voice, role):
-    path = OUT / lang / f"{i}.mp3"
+async def synth(sem, lang, i, text, voice, role, sub=""):
+    path = OUT / lang / sub / f"{i}.mp3"
     path.parent.mkdir(parents=True, exist_ok=True)
     spoken_text = get_tts_text(lang, text)
     err = None
@@ -133,12 +137,12 @@ async def synth(sem, lang, i, text, voice, role):
                 st = STYLE[role]
                 await edge_tts.Communicate(spoken_text, voice, rate=st["rate"], pitch=st["pitch"]).save(str(path))
                 if path.stat().st_size > 0:
-                    print(f"ok   {lang}/{i}.mp3  {voice}")
+                    print(f"ok   {lang}/{sub + '/' if sub else ''}{i}.mp3  {voice}")
                     return True
             except Exception as e:  # network hiccup: retry
                 err = e
                 await asyncio.sleep(1.5)
-    print(f"FAIL {lang}/{i}.mp3  {voice}  ({err})")
+    print(f"FAIL {lang}/{sub + '/' if sub else ''}{i}.mp3  {voice}  ({err})")
     return False
 
 
@@ -157,6 +161,8 @@ async def main(langs):
         for i, text in enumerate(LINES[lang]):
             role = "agent" if i % 2 == 0 else "customer"
             jobs.append(synth(sem, lang, i, text, agent if role == "agent" else cust, role))
+            # swapped set for a female customer: male agent, female customer
+            jobs.append(synth(sem, lang, i, text, cust if role == "agent" else agent, role, "fc"))
     res = await asyncio.gather(*jobs)
     print(f"\nDone: {sum(res)}/{len(res)} clips in {OUT}")
 
