@@ -30,8 +30,14 @@ VOICES = {
     # "or" (Odia): Edge TTS has no Odia voice. The demo falls back to captions only.
 }
 
-# Phone-call pacing: natural relaxed pacing for both agent and customer (-7% rate, +0Hz pitch)
-STYLE = {"agent": {"rate": "-7%", "pitch": "+0Hz"}, "customer": {"rate": "-7%", "pitch": "+0Hz"}}
+def get_style(voice: str) -> dict:
+    # Female voices need natural -2% rate to prevent robotic time-stretching artifacts
+    is_female = any(name in voice for name in ["Shruti", "Neerja", "Pallavi", "Sobhana", "Dhwani", "Sapna"])
+    if is_female:
+        return {"rate": "-2%", "pitch": "+0Hz"}
+    return {"rate": "-4%", "pitch": "+0Hz"}
+
+STYLE = {"agent": {"rate": "-2%", "pitch": "+0Hz"}, "customer": {"rate": "-2%", "pitch": "+0Hz"}}
 
 LINES = {
     "en": [
@@ -235,7 +241,7 @@ async def synth(sem, lang, i, text, voice, role, sub=""):
     async with sem:
         for _ in range(3):
             try:
-                st = STYLE[role]
+                st = get_style(voice)
                 await edge_tts.Communicate(spoken_text, voice, rate=st["rate"], pitch=st["pitch"]).save(str(path))
                 if path.stat().st_size > 0:
                     path.write_bytes(await asyncio.to_thread(polish, path.read_bytes()))

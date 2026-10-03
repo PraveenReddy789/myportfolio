@@ -18,7 +18,7 @@ import edge_tts
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
-from generate_voices import STYLE, VOICES, get_tts_text, polish
+from generate_voices import VOICES, get_style, get_tts_text, polish
 
 app = FastAPI()
 app.add_middleware(
@@ -43,7 +43,7 @@ async def tts(lang: str, text: str = Query(..., min_length=1, max_length=300), r
         raise HTTPException(404, "no voice for this language")
     idx = 0 if role == "agent" else 1
     voice = VOICES[lang][idx ^ 1] if alt else VOICES[lang][idx]
-    st = STYLE["agent" if role == "agent" else "customer"]
+    st = get_style(voice)
     key = (voice, text)
     if key not in CACHE:
         buf = bytearray()
