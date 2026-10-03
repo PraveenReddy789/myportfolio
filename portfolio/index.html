@@ -3294,14 +3294,23 @@
             }
             /* live pipeline demo */
             var AGI = '<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 14v-2a8 8 0 0 1 16 0v2"/><rect x="2.5" y="13" width="4.5" height="6.5" rx="2"/><rect x="17" y="13" width="4.5" height="6.5" rx="2"/><path d="M19.5 19.5c0 1.5-2 2.5-5 2.5"/></svg>', CUI = '<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M10.5 18.5h3"/><path d="M10 6h4" opacity=".6"/></svg>';
-            var PE = ['Hello, this is Samvaad calling about your loan EMI.', 'Yes, please go ahead.', 'Your EMI of INR 12,500 was due on 20 September.', 'Yes, my salary came late this month.', 'I understand. When can you make the payment?', 'I will pay the full amount of INR 12,500 by 7 October.', 'Thank you. I have noted the full payment of INR 12,500 by 7 October.', 'Okay, thank you.'];
+            var PE = ['Hello Mr. Praveen, this is Samvaad calling about your loan EMI.', 'Yes, please go ahead.', 'Mr. Praveen, your EMI of INR 12,500 was due on 20 September.', 'Yes, my salary came late this month.', 'I understand, Mr. Praveen. When can you make the payment?', 'I will pay the full amount of INR 12,500 by 7 October.', 'Thank you, Mr. Praveen. I have noted the full payment of INR 12,500 by 7 October.', 'Okay, thank you.'];
             var PN = {
-                ta: ['வணக்கம், நான் சம்வாத் அழைக்கிறேன், உங்கள் கடன் EMI பற்றி.', 'ஆமாம், சொல்லுங்கள்.', 'உங்கள் ₹12,500 EMI செப்டம்பர் 20 அன்று செலுத்த வேண்டியது.', 'ஆமாம், இந்த மாதம் சம்பளம் தாமதமாக வந்தது.', 'புரிகிறது. எப்போது செலுத்த முடியும்?', 'அக்டோபர் 7க்குள் முழுத் தொகையான ₹12,500 செலுத்துகிறேன்.', 'நன்றி. அக்டோபர் 7க்குள் ₹12,500 முழுத் தொகை செலுத்துவதாகக் குறித்துக்கொண்டேன்.', 'சரி, நன்றி.'],
-                te: ['నమస్కారం, నేను సంవాద్ నుండి మాట్లాడుతున్నాను, మీ లోన్ EMI గురించి.', 'అవును, చెప్పండి.', 'మీ ₹12,500 EMI సెప్టెంబర్ 20 న చెల్లించాల్సి ఉంది.', 'అవును, ఈ నెల జీతం ఆలస్యంగా వచ్చింది.', 'అర్థమైంది. ఎప్పుడు చెల్లించగలరు?', 'అక్టోబర్ 7 లోపు పూర్తి మొత్తం ₹12,500 చెల్లిస్తాను.', 'ధన్యవాదాలు. అక్టోబర్ 7 లోపు పూర్తి మొత్తం ₹12,500 చెల్లింపు నమోదు చేశాను.', 'సరే, ధన్యవాదాలు.'],
-                ml: ['നമസ്കാരം, ഞാൻ സംവാദിൽ നിന്നാണ് വിളിക്കുന്നത്, നിങ്ങളുടെ വായ്പ EMI സംബന്ധിച്ച്.', 'ശരി, പറയൂ.', 'നിങ്ങളുടെ ₹12,500 EMI സെപ്റ്റംബർ 20-ന് അടയ്ക്കേണ്ടതായിരുന്നു.', 'അതെ, ഈ മാസം ശമ്പളം വൈകിയാണ് കിട്ടിയത്.', 'മനസ്സിലായി. എപ്പോൾ അടയ്ക്കാൻ കഴിയും?', 'ഒക്ടോബർ 7-നകം മുഴുവൻ തുകയായ ₹12,500 അടയ്ക്കാം.', 'നന്ദി. ഒക്ടോബർ 7-നകം ₹12,500 മുഴുവൻ തുകയും അടയ്ക്കുമെന്ന് രേഖപ്പെടുത്തി.', 'ശരി, നന്ദി.'],
-                gu: ['નમસ્તે, હું સંવાદમાંથી બોલું છું, તમારી લોન EMI વિશે.', 'હા, બોલો.', 'તમારી ₹12,500 ની EMI 20 સપ્ટેમ્બરે ભરવાની હતી.', 'હા, આ મહિને પગાર મોડો આવ્યો.', 'સમજાયું. તમે ક્યારે ચૂકવણી કરી શકશો?', '7 ઓક્ટોબર સુધીમાં પૂરી રકમ ₹12,500 ભરી દઈશ.', 'આભાર. 7 ઓક્ટોબર સુધીમાં પૂરી ₹12,500 ની ચુકવણી નોંધાઈ ગઈ છે.', 'સારું, આભાર.'],
-                or: ['ନମସ୍କାର, ମୁଁ ସଂବାଦରୁ କହୁଛି, ଆପଣଙ୍କ ଲୋନ୍ EMI ବିଷୟରେ।', 'ହଁ, କୁହନ୍ତୁ।', 'ଆପଣଙ୍କ ₹12,500 EMI ସେପ୍ଟେମ୍ବର 20 ରେ ଦେୟ ଥିଲା।', 'ହଁ, ଏହି ମାସ ଦରମା ଡେରିରେ ଆସିଲା।', 'ବୁଝିଲି। ଆପଣ କେବେ ଦେଇପାରିବେ?', 'ଅକ୍ଟୋବର 7 ସୁଦ୍ଧା ପୂରା ରାଶି ₹12,500 ଦେବି।', 'ଧନ୍ୟବାଦ। ଅକ୍ଟୋବର 7 ସୁଦ୍ଧା ପୂରା ₹12,500 ଦେୟ ଲେଖିନେଲି।', 'ଠିକ୍ ଅଛି, ଧନ୍ୟବାଦ।'],
-                kn: ['ನಮಸ್ಕಾರ, ನಾನು ಸಂವಾದ್‌ನಿಂದ ಕರೆ ಮಾಡುತ್ತಿದ್ದೇನೆ, ನಿಮ್ಮ ಸಾಲದ EMI ಬಗ್ಗೆ.', 'ಹೌದು, ಹೇಳಿ.', 'ನಿಮ್ಮ ₹12,500 EMI ಸೆಪ್ಟೆಂಬರ್ 20 ರಂದು ಪಾವತಿಸಬೇಕಿತ್ತು.', 'ಹೌದು, ಈ ತಿಂಗಳು ಸಂಬಳ ತಡವಾಗಿ ಬಂತು.', 'ಅರ್ಥವಾಯಿತು. ನೀವು ಯಾವಾಗ ಪಾವತಿಸಬಹುದು?', 'ಅಕ್ಟೋಬರ್ 7 ರೊಳಗೆ ಪೂರ್ಣ ಮೊತ್ತ ₹12,500 ಪಾವತಿಸುತ್ತೇನೆ.', 'ಧನ್ಯವಾದಗಳು. ಅಕ್ಟೋಬರ್ 7 ರೊಳಗೆ ಪೂರ್ಣ ಮೊತ್ತ ₹12,500 ಪಾವತಿಯನ್ನು ದಾಖಲಿಸಿದ್ದೇನೆ.', 'ಸರಿ, ಧನ್ಯವಾದಗಳು.']
+                ta: ['வணக்கம் பிரவீன் அவர்களே, நான் சம்வாத் அழைக்கிறேன், உங்கள் கடன் EMI பற்றி.', 'ஆமாம், சொல்லுங்கள்.', 'பிரவீன் அவர்களே, உங்கள் ₹12,500 EMI செப்டம்பர் 20 அன்று செலுத்த வேண்டியது.', 'ஆமாம், இந்த மாதம் சம்பளம் தாமதமாக வந்தது.', 'புரிகிறது, பிரவீன் அவர்களே. எப்போது செலுத்த முடியும்?', 'அக்டோபர் 7க்குள் முழுத் தொகையான ₹12,500 செலுத்துகிறேன்.', 'நன்றி, பிரவீன் அவர்களே. அக்டோபர் 7க்குள் ₹12,500 முழுத் தொகை செலுத்துவதாகக் குறித்துக்கொண்டேன்.', 'சரி, நன்றி.'],
+                te: ['నమస్కారం ప్రవీణ్ గారు, నేను సంవాద్ నుండి మాట్లాడుతున్నాను, మీ లోన్ EMI గురించి.', 'అవును, చెప్పండి.', 'ప్రవీణ్ గారు, మీ ₹12,500 EMI సెప్టెంబర్ 20 న చెల్లించాల్సి ఉంది.', 'అవును, ఈ నెల జీతం ఆలస్యంగా వచ్చింది.', 'అర్థమైంది, ప్రవీణ్ గారు. ఎప్పుడు చెల్లించగలరు?', 'అక్టోబర్ 7 లోపు పూర్తి మొత్తం ₹12,500 చెల్లిస్తాను.', 'ధన్యవాదాలు, ప్రవీణ్ గారు. అక్టోబర్ 7 లోపు పూర్తి మొత్తం ₹12,500 చెల్లింపు నమోదు చేశాను.', 'సరే, ధన్యవాదాలు.'],
+                ml: ['നമസ്കാരം ശ്രീ പ്രവീൺ, ഞാൻ സംവാദിൽ നിന്നാണ് വിളിക്കുന്നത്, നിങ്ങളുടെ വായ്പ EMI സംബന്ധിച്ച്.', 'ശരി, പറയൂ.', 'ശ്രീ പ്രവീൺ, നിങ്ങളുടെ ₹12,500 EMI സെപ്റ്റംബർ 20-ന് അടയ്ക്കേണ്ടതായിരുന്നു.', 'അതെ, ഈ മാസം ശമ്പളം വൈകിയാണ് കിട്ടിയത്.', 'മനസ്സിലായി, ശ്രീ പ്രവീൺ. എപ്പോൾ അടയ്ക്കാൻ കഴിയും?', 'ഒക്ടോബർ 7-നകം മുഴുവൻ തുകയായ ₹12,500 അടയ്ക്കാം.', 'നന്ദി, ശ്രീ പ്രവീൺ. ഒക്ടോബർ 7-നകം ₹12,500 മുഴുവൻ തുകയും അടയ്ക്കുമെന്ന് രേഖപ്പെടുത്തി.', 'ശരി, നന്ദി.'],
+                gu: ['નમસ્તે શ્રી પ્રવીણ, હું સંવાદમાંથી બોલું છું, તમારી લોન EMI વિશે.', 'હા, બોલો.', 'શ્રી પ્રવીણ, તમારી ₹12,500 ની EMI 20 સપ્ટેમ્બરે ભરવાની હતી.', 'હા, આ મહિને પગાર મોડો આવ્યો.', 'સમજાયું, શ્રી પ્રવીણ. તમે ક્યારે ચૂકવણી કરી શકશો?', '7 ઓક્ટોબર સુધીમાં પૂરી રકમ ₹12,500 ભરી દઈશ.', 'આભાર, શ્રી પ્રવીણ. 7 ઓક્ટોબર સુધીમાં પૂરી ₹12,500 ની ચુકવણી નોંધાઈ ગઈ છે.', 'સારું, આભાર.'],
+                or: ['ନମସ୍କାର ଶ୍ରୀ ପ୍ରବୀଣ, ମୁଁ ସଂବାଦରୁ କହୁଛି, ଆପଣଙ୍କ ଲୋନ୍ EMI ବିଷୟରେ।', 'ହଁ, କୁହନ୍ତୁ।', 'ଶ୍ରୀ ପ୍ରବୀଣ, ଆପଣଙ୍କ ₹12,500 EMI ସେପ୍ଟେମ୍ବର 20 ରେ ଦେୟ ଥିଲା।', 'ହଁ, ଏହି ମାସ ଦରମା ଡେରିରେ ଆସିଲା।', 'ବୁଝିଲି, ଶ୍ରୀ ପ୍ରବୀଣ। ଆପଣ କେବେ ଦେଇପାରିବେ?', 'ଅକ୍ଟୋବର 7 ସୁଦ୍ଧା ପୂରା ରାଶି ₹12,500 ଦେବି।', 'ଧନ୍ୟବାଦ, ଶ୍ରୀ ପ୍ରବୀଣ। ଅକ୍ଟୋବର 7 ସୁଦ୍ଧା ପୂରା ₹12,500 ଦେୟ ଲେଖିନେଲି।', 'ଠିକ୍ ଅଛି, ଧନ୍ୟବାଦ।'],
+                kn: ['ನಮಸ್ಕಾರ ಪ್ರವೀಣ್ ಅವರೇ, ನಾನು ಸಂವಾದ್‌ನಿಂದ ಕರೆ ಮಾಡುತ್ತಿದ್ದೇನೆ, ನಿಮ್ಮ ಸಾಲದ EMI ಬಗ್ಗೆ.', 'ಹೌದು, ಹೇಳಿ.', 'ಪ್ರವೀಣ್ ಅವರೇ, ನಿಮ್ಮ ₹12,500 EMI ಸೆಪ್ಟೆಂಬರ್ 20 ರಂದು ಪಾವತಿಸಬೇಕಿತ್ತು.', 'ಹೌದು, ಈ ತಿಂಗಳು ಸಂಬಳ ತಡವಾಗಿ ಬಂತು.', 'ಅರ್ಥವಾಯಿತು, ಪ್ರವೀಣ್ ಅವರೇ. ನೀವು ಯಾವಾಗ ಪಾವತಿಸಬಹುದು?', 'ಅಕ್ಟೋಬರ್ 7 ರೊಳಗೆ ಪೂರ್ಣ ಮೊತ್ತ ₹12,500 ಪಾವತಿಸುತ್ತೇನೆ.', 'ಧನ್ಯವಾದಗಳು, ಪ್ರವೀಣ್ ಅವರೇ. ಅಕ್ಟೋಬರ್ 7 ರೊಳಗೆ ಪೂರ್ಣ ಮೊತ್ತ ₹12,500 ಪಾವತಿಯನ್ನು ದಾಖಲಿಸಿದ್ದೇನೆ.', 'ಸರಿ, ಧನ್ಯವಾದಗಳು.']
+            };
+            var PE_FC = ['Hello Ms. Priya, this is Samvaad calling about your loan EMI.', 'Yes, please go ahead.', 'Ms. Priya, your EMI of INR 12,500 was due on 20 September.', 'Yes, my salary came late this month.', 'I understand, Ms. Priya. When can you make the payment?', 'I will pay the full amount of INR 12,500 by 7 October.', 'Thank you, Ms. Priya. I have noted the full payment of INR 12,500 by 7 October.', 'Okay, thank you.'];
+            var PN_FC = {
+                ta: ['வணக்கம் பிரியா அவர்களே, நான் சம்வாத் அழைக்கிறேன், உங்கள் கடன் EMI பற்றி.', 'ஆமாம், சொல்லுங்கள்.', 'பிரியா அவர்களே, உங்கள் ₹12,500 EMI செப்டம்பர் 20 அன்று செலுத்த வேண்டியது.', 'ஆமாம், இந்த மாதம் சம்பளம் தாமதமாக வந்தது.', 'புரிகிறது, பிரியா அவர்களே. எப்போது செலுத்த முடியும்?', 'அக்டோபர் 7க்குள் முழுத் தொகையான ₹12,500 செலுத்துகிறேன்.', 'நன்றி, பிரியா அவர்களே. அக்டோபர் 7க்குள் ₹12,500 முழுத் தொகை செலுத்துவதாகக் குறித்துக்கொண்டேன்.', 'சரி, நன்றி.'],
+                te: ['నమస్కారం ప్రియ గారు, నేను సంవాద్ నుండి మాట్లాడుతున్నాను, మీ లోన్ EMI గురించి.', 'అవును, చెప్పండి.', 'ప్రియ గారు, మీ ₹12,500 EMI సెప్టెంబర్ 20 న చెల్లించాల్సి ఉంది.', 'అవును, ఈ నెల జీతం ఆలస్యంగా వచ్చింది.', 'అర్థమైంది, ప్రియ గారు. ఎప్పుడు చెల్లించగలరు?', 'అక్టోబర్ 7 లోపు పూర్తి మొత్తం ₹12,500 చెల్లిస్తాను.', 'ధన్యవాదాలు, ప్రియ గారు. అక్టోబర్ 7 లోపు పూర్తి మొత్తం ₹12,500 చెల్లింపు నమోదు చేశాను.', 'సరే, ధన్యవాదాలు.'],
+                ml: ['നമസ്കാരം ശ്രീമതി പ്രിയ, ഞാൻ സംവാദിൽ നിന്നാണ് വിളിക്കുന്നത്, നിങ്ങളുടെ വായ്പ EMI സംബന്ധിച്ച്.', 'ശരി, പറയൂ.', 'ശ്രീമതി പ്രിയ, നിങ്ങളുടെ ₹12,500 EMI സെപ്റ്റംബർ 20-ന് അടയ്ക്കേണ്ടതായിരുന്നു.', 'അതെ, ഈ മാസം ശമ്പളം വൈകിയാണ് കിട്ടിയത്.', 'മനസ്സിലായി, ശ്രീമതി പ്രിയ. എപ്പോൾ അടയ്ക്കാൻ കഴിയും?', 'ഒക്ടോബർ 7-നകം മുഴുവൻ തുകയായ ₹12,500 അടയ്ക്കാം.', 'നന്ദി, ശ്രീമതി പ്രിയ. ഒക്ടോബർ 7-നകം ₹12,500 മുഴുവൻ തുകയും അടയ്ക്കുമെന്ന് രേഖപ്പെടുത്തി.', 'ശരി, നന്ദി.'],
+                gu: ['નમસ્તે શ્રીમતી પ્રિયા, હું સંવાદમાંથી બોલું છું, તમારી લોન EMI વિશે.', 'હા, બોલો.', 'શ્રીમતી પ્રિયા, તમારી ₹12,500 ની EMI 20 સપ્ટેમ્બરે ભરવાની હતી.', 'હા, આ મહિને પગાર મોડો આવ્યો.', 'સમજાયું, શ્રીમતી પ્રિયા. તમે ક્યારે ચૂકવણી કરી શકશો?', '7 ઓક્ટોબર સુધીમાં પૂરી રકમ ₹12,500 ભરી દઈશ.', 'આભાર, શ્રીમતી પ્રિયા. 7 ઓક્ટોબર સુધીમાં પૂરી ₹12,500 ની ચુકવણી નોંધાઈ ગઈ છે.', 'સારું, આભાર.'],
+                or: ['ନମସ୍କାର ଶ୍ରୀମତୀ ପ୍ରିୟା, ମୁଁ ସଂବାଦରୁ କହୁଛି, ଆପଣଙ୍କ ଲୋନ୍ EMI ବିଷୟରେ।', 'ହଁ, କୁହନ୍ତୁ।', 'ଶ୍ରୀମତୀ ପ୍ରିୟା, ଆପଣଙ୍କ ₹12,500 EMI ସେପ୍ଟେମ୍ବର 20 ରେ ଦେୟ ଥିଲା।', 'ହଁ, ଏହି ମାସ ଦରମା ଡେରିରେ ଆସିଲା।', 'ବୁଝିଲି, ଶ୍ରୀମତୀ ପ୍ରିୟା। ଆପଣ କେବେ ଦେଇପାରିବେ?', 'ଅକ୍ଟୋବର 7 ସୁଦ୍ଧା ପୂରା ରାଶି ₹12,500 ଦେବି।', 'ଧନ୍ୟବାଦ, ଶ୍ରୀମତୀ ପ୍ରିୟା। ଅକ୍ଟୋବର 7 ସୁଦ୍ଧା ପୂରା ₹12,500 ଦେୟ ଲେଖିନେଲି।', 'ଠିକ୍ ଅଛି, ଧନ୍ୟବାଦ।'],
+                kn: ['ನಮಸ್ಕಾರ ಪ್ರಿಯಾ ಅವರೇ, ನಾನು ಸಂವಾದ್‌ನಿಂದ ಕರೆ ಮಾಡುತ್ತಿದ್ದೇನೆ, ನಿಮ್ಮ ಸಾಲದ EMI ಬಗ್ಗೆ.', 'ಹೌದು, ಹೇಳಿ.', 'ಪ್ರಿಯಾ ಅವರೇ, ನಿಮ್ಮ ₹12,500 EMI ಸೆಪ್ಟೆಂಬರ್ 20 ರಂದು ಪಾವತಿಸಬೇಕಿತ್ತು.', 'ಹೌದು, ಈ ತಿಂಗಳು ಸಂಬಳ ತಡವಾಗಿ ಬಂತು.', 'ಅರ್ಥವಾಯಿತು, ಪ್ರಿಯಾ ಅವರೇ. ನೀವು ಯಾವಾಗ ಪಾವತಿಸಬಹುದು?', 'ಅಕ್ಟೋಬರ್ 7 ರೊಳಗೆ ಪೂರ್ಣ ಮೊತ್ತ ₹12,500 ಪಾವತಿಸುತ್ತೇನೆ.', 'ಧನ್ಯವಾದಗಳು, ಪ್ರಿಯಾ ಅವರೇ. ಅಕ್ಟೋಬರ್ 7 ರೊಳಗೆ ಪೂರ್ಣ ಮೊತ್ತ ₹12,500 ಪಾವತಿಯನ್ನು ದಾಖಲಿಸಿದ್ದೇನೆ.', 'ಸರಿ, ಧನ್ಯವಾದಗಳು.']
             };
             var PNM = { en: 'English', ta: 'Tamil', te: 'Telugu', ml: 'Malayalam', gu: 'Gujarati', or: 'Odia', kn: 'Kannada' }, pcur = 'en';
             var jn = document.getElementById('json'), evn = document.getElementById('ev'), ib = document.getElementById('inject'), pl = document.getElementById('pllg'), sts = document.querySelectorAll('#pipe .st'), cnt = 0, typer, dt, running = false;
@@ -3437,22 +3446,28 @@
             var FEMN = ' priya divya anitha anita sravani shravani lakshmi laxmi swathi swati sowmya soumya sneha pooja puja deepika deepa kavya kavitha kavita anjali anusha ananya aishwarya bhavana bhavani meena meera mounika monika harika harini haritha jyothi jyoti keerthi kirthi lavanya madhavi manasa nandini neha nikitha nikita padma pavani pallavi prathyusha pratyusha radha rajani ramya rekha renuka roja sandhya sangeetha sangeeta saritha sarita shilpa sirisha shirisha shreya shruthi shruti sita seetha sridevi sunitha sunita supriya swapna tejaswini vani varsha vasavi vidya vineela vinitha yamini uma usha geetha geeta gayathri gayatri durga bhargavi archana aparna amrutha amrita alekhya akhila ashwini bindu charitha chandana hema indu isha jahnavi kalyani kamala komali sushma sirivennela mamatha mamata manjula madhuri nirmala parvathi parvati ';
             function guessF(nm) { var w = nm.toLowerCase().split(' ')[0].replace(/[^a-z]/g, ''); if (!w) return false; return FEMN.indexOf(' ' + w + ' ') >= 0 || /(devi|rani|kumari|bai|priya|vathi|vati|mma|lakshmi|laxmi|jyothi)$/.test(w) }
             function addrFor(L, nm) { var h = HON[L] || HON.en, t = typeof h === 'string' ? h : h[cgen]; return t.replace('{n}', nm) }
-            function inject(arr, a) {
-                return arr.map(function (t, i) {
-                    if (i === 0) return t.replace(',', ' ' + a + ',');
-                    if (i === 4 || i === 6) return t.replace(/([.\u0964])/, ', ' + a + '$1');
-                    return t
-                })
-            }
             function personalize(base, L) {
-                var r = { lines: base, en: PE, idx: [], name: '', rec: '' };
-                fcm = !!cname && cgen === 'F';
-                if (!cname) return r;
-                r.name = cname; r.rec = addrFor('en', cname);
-                r.lines = inject(base, addrFor(L, xlit(cname, L)));
-                r.en = inject(PE, r.rec);
-                r.idx = [0, 4, 6];
-                return r
+                fcm = (cgen === 'F');
+                var defName = fcm ? 'Priya' : 'Praveen';
+                var curName = cname || defName;
+                var srcBase = fcm ? (PN_FC[L] || PE_FC) : (PN[L] || PE);
+                var srcEn = fcm ? PE_FC : PE;
+                var r = { lines: srcBase, en: srcEn, idx: [], name: curName, rec: addrFor('en', curName) };
+                var isDef = (fcm && curName.toLowerCase() === 'priya') || (!fcm && curName.toLowerCase() === 'praveen');
+                if (!isDef) {
+                    var defAddr = addrFor(L, xlit(defName, L));
+                    var newAddr = addrFor(L, xlit(curName, L));
+                    r.lines = srcBase.map(function (t, i) {
+                        return (i % 2 === 0) ? t.split(defAddr).join(newAddr) : t;
+                    });
+                    var defEnAddr = addrFor('en', defName);
+                    var newEnAddr = addrFor('en', curName);
+                    r.en = srcEn.map(function (t, i) {
+                        return (i % 2 === 0) ? t.split(defEnAddr).join(newEnAddr) : t;
+                    });
+                    r.idx = [0, 2, 4, 6];
+                }
+                return r;
             }
             /* the name lines can't be pre-recorded, so they are synthesised on demand (server) or spoken by the browser */
             /* spoken form of the text: EMI read letter by letter, money read naturally (same rules as generate_voices.py) */
