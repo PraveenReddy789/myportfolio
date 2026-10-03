@@ -3349,9 +3349,6 @@
                 if (pers) {
                     var okp = await playCustom(k);
                     if (okp) return true;
-                    if (!snd) return false;
-                    // Speak the personalized line (including the customer name) via speech synthesis
-                    return sayTTS(t, ag, l);
                 }
                 var ck = l + (fcm ? 'f' : '');
                 if (!CF[ck]) {
