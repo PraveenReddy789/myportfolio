@@ -3358,6 +3358,7 @@
                 if (pers) {
                     var okp = await playCustom(k);
                     if (okp) return true;
+                    return sayTTS(t, ag, l);
                 }
                 var ck = l + (fcm ? 'f' : '');
                 if (!CF[ck]) {
@@ -3399,6 +3400,28 @@
                 gu: { M: '\u0ab6\u0acd\u0ab0\u0ac0 {n}', F: '\u0ab6\u0acd\u0ab0\u0ac0\u0aae\u0aa4\u0ac0 {n}' },
                 'or': { M: '\u0b36\u0b4d\u0b30\u0b40 {n}', F: '\u0b36\u0b4d\u0b30\u0b40\u0b2e\u0b24\u0b40 {n}' }
             };
+            var DEF_NAMES = {
+                M: { en: 'Mr. Praveen', te: 'ప్రవీణ్ గారు', ta: 'பிரவீன் அவர்களே', ml: 'ശ്രീ പ്രവീൺ', gu: 'શ્રી પ્રવીણ', 'or': 'ଶ୍ରୀ ପ୍ରବୀଣ', kn: 'ಪ್ರವೀಣ್ ಅವರೇ' },
+                F: { en: 'Ms. Priya', te: 'ప్రియ గారు', ta: 'பிரியா அவர்களே', ml: 'ശ്രീമതി പ്രിയ', gu: 'શ્રીમતી પ્રિયા', 'or': 'ଶ୍ରୀମତୀ ପ୍ରିୟା', kn: 'ಪ್ರಿಯಾ ಅವರೇ' }
+            };
+            var COMMON_XLIT = {
+                bhavana: { te: 'భావన', ta: 'பாவனா', kn: 'ಭಾವನಾ', ml: 'ഭാവന', gu: 'ભાવના', 'or': 'ଭାବନା' },
+                bhavani: { te: 'భవాని', ta: 'பவானி', kn: 'ಭವಾನಿ', ml: 'ഭവാനി', gu: 'ભવાની', 'or': 'ଭବାନୀ' },
+                priya: { te: 'ప్రియ', ta: 'பிரியா', kn: 'ಪ್ರಿಯಾ', ml: 'പ്രിയ', gu: 'પ્રિયા', 'or': 'ପ୍ରିୟା' },
+                praveen: { te: 'ప్రవీణ్', ta: 'பிரவீன்', kn: 'ಪ್ರವೀಣ್', ml: 'പ്രവീൺ', gu: 'પ્રવીણ', 'or': 'ପ୍ରବୀଣ' },
+                divya: { te: 'దివ్య', ta: 'திவ்யா', kn: 'ದಿವ್ಯ', ml: 'ദിവ്യ', gu: 'દિવ્યા', 'or': 'ଦିବ୍ୟା' },
+                swathi: { te: 'స్వాతి', ta: 'சுவாதி', kn: 'ಸ್ವಾತಿ', ml: 'സ്വാതി', gu: 'સ્વાતિ', 'or': 'ସ୍ୱାତୀ' },
+                sneha: { te: 'స్నేహ', ta: 'ஸ்நேகா', kn: 'ಸ್ನೇಹ', ml: 'സ്നേഹ', gu: 'સ્નેહા', 'or': 'ସ୍ନେହା' },
+                kavya: { te: 'కావ్య', ta: 'காவ்யா', kn: 'ಕಾವ್ಯ', ml: 'കാവ്യ', gu: 'કાવ્યા', 'or': 'କାବ୍ୟା' },
+                deepika: { te: 'దీపిక', ta: 'தீபிகா', kn: 'ದೀಪಿಕಾ', ml: 'ദീപിക', gu: 'દીપિકા', 'or': 'ଦୀପିକା' },
+                anitha: { te: 'అనిత', ta: 'அனிதா', kn: 'ಅನಿತಾ', ml: 'അനിത', gu: 'અનિતા', 'or': 'ଅନିତା' },
+                anita: { te: 'అనిత', ta: 'அனிதா', kn: 'ಅನಿತಾ', ml: 'അനിത', gu: 'અનિતા', 'or': 'ଅନିତା' },
+                suresh: { te: 'సురేష్', ta: 'சுரேஷ்', kn: 'ಸುರೇಶ್', ml: 'സുരേഷ്', gu: 'સુરેશ', 'or': 'ସୁରେଶ' },
+                ramesh: { te: 'రమేష్', ta: 'ரமேஷ்', kn: 'ರಮೇಶ್', ml: 'രമേഷ്', gu: 'રમેશ', 'or': 'ରମେଶ' },
+                rahul: { te: 'రాహుల్', ta: 'ராகுல்', kn: 'ರಾಹುಲ್', ml: 'രാഹുൽ', gu: 'રાહુલ', 'or': 'ରାହୁଲ' },
+                anil: { te: 'అనిల్', ta: 'அனில்', kn: 'ಅನಿಲ್', ml: 'അനിൽ', gu: 'અનિલ', 'or': 'ଅନିଲ' },
+                rajesh: { te: 'రాజేష్', ta: 'ராஜேஷ்', kn: 'ರಾಜೇಶ್', ml: 'രാജേഷ്', gu: 'રાજેશ', 'or': 'ਰਾਜେଶ' }
+            };
             var XB = { te: 0xC00, kn: 0xC80, ml: 0xD00, gu: 0xA80, 'or': 0xB00, ta: 0xB80 };
             var XV = { aa: [6, 0x3E], ee: [0x0F, 0x47], ii: [8, 0x40], oo: [0x13, 0x4B], uu: [0xA, 0x42], ai: [0x10, 0x48], au: [0x14, 0x4C], a: [5, 0], i: [7, 0x3F], u: [9, 0x41], e: [0x0E, 0x46], o: [0x12, 0x4A] };
             var XC = { chh: [0x1B], tth: [0x20], ddh: [0x22], kh: [0x16], gh: [0x18], ch: [0x1A], jh: [0x1D], th: [0x24], dh: [0x27], ph: [0x2B], bh: [0x2D], sh: [0x37], tt: [0x1F, 0x1F], dd: [0x21, 0x21], k: [0x15], g: [0x17], c: [0x15], q: [0x15], j: [0x1C], z: [0x1C], t: [0x24], d: [0x26], n: [0x28], p: [0x2A], f: [0x2B], b: [0x2C], m: [0x2E], y: [0x2F], r: [0x30], l: [0x32], v: [0x35], w: [0x35], s: [0x38], h: [0x39] };
@@ -3437,7 +3460,11 @@
             }
             function xlit(name, L) {
                 if (L === 'en' || !XB[L] || /[^\x00-\x7f]/.test(name)) return name;
-                return name.toLowerCase().replace(/[^a-z]+/g, ' ').trim().split(' ').map(function (w) { return xlWord(w, L) }).join(' ')
+                var clean = name.toLowerCase().replace(/[^a-z]+/g, ' ').trim();
+                return clean.split(' ').map(function (w) {
+                    if (COMMON_XLIT[w] && COMMON_XLIT[w][L]) return COMMON_XLIT[w][L];
+                    return xlWord(w, L);
+                }).join(' ');
             }
             function cleanName(v) {
                 v = String(v || '').replace(/[^\p{L}\p{M} .'\-]/gu, '').replace(/\s+/g, ' ').trim().slice(0, 30);
@@ -3453,17 +3480,17 @@
                 var srcBase = fcm ? (PN_FC[L] || PE_FC) : (PN[L] || PE);
                 var srcEn = fcm ? PE_FC : PE;
                 var r = { lines: srcBase, en: srcEn, idx: [], name: curName, rec: addrFor('en', curName) };
-                var isDef = (fcm && curName.toLowerCase() === 'priya') || (!fcm && curName.toLowerCase() === 'praveen');
+                var isDef = !cname || (fcm && curName.toLowerCase() === 'priya') || (!fcm && curName.toLowerCase() === 'praveen');
                 if (!isDef) {
-                    var defAddr = addrFor(L, xlit(defName, L));
+                    var oldAddr = fcm ? DEF_NAMES.F[L] : DEF_NAMES.M[L];
                     var newAddr = addrFor(L, xlit(curName, L));
                     r.lines = srcBase.map(function (t, i) {
-                        return (i % 2 === 0) ? t.split(defAddr).join(newAddr) : t;
+                        return (i % 2 === 0 && oldAddr) ? t.split(oldAddr).join(newAddr) : t;
                     });
-                    var defEnAddr = addrFor('en', defName);
+                    var oldEnAddr = fcm ? DEF_NAMES.F.en : DEF_NAMES.M.en;
                     var newEnAddr = addrFor('en', curName);
                     r.en = srcEn.map(function (t, i) {
-                        return (i % 2 === 0) ? t.split(defEnAddr).join(newEnAddr) : t;
+                        return (i % 2 === 0 && oldEnAddr) ? t.split(oldEnAddr).join(newEnAddr) : t;
                     });
                     r.idx = [0, 2, 4, 6];
                 }
