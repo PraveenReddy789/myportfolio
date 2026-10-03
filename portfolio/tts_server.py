@@ -12,6 +12,7 @@ Optional: ALLOWED_ORIGINS="https://yoursite.com" to lock CORS down (default: any
 Keep this file next to generate_voices.py - it reuses the same voices and EMI pronunciation fix,
 so the name lines sound like the rest of the pre-recorded call.
 """
+import asyncio
 import os
 import edge_tts
 from fastapi import FastAPI, HTTPException, Query
@@ -29,17 +30,33 @@ app.add_middleware(
 CACHE: dict = {}  # same voice + same sentence is only synthesised once
 
 
+@app.get("/health")
+async def health():
+    """The page pings this when the name form opens, so a sleeping host is awake by the time the call starts."""
+    return {"ok": True}
+
+
 @app.get("/tts")
-async def tts(lang: str, text: str = Query(..., min_length=1, max_length=300), role: str = "agent"):
+async def tts(lang: str, text: str = Query(..., min_length=1, max_length=300), role: str = "agent", alt: int = 0):
+    """alt=1 swaps the voices (male agent / female customer) - used when the viewer's name is female."""
     if lang not in VOICES:
         raise HTTPException(404, "no voice for this language")
-    voice = VOICES[lang][0 if role == "agent" else 1]
+    idx = 0 if role == "agent" else 1
+    voice = VOICES[lang][idx ^ 1] if alt else VOICES[lang][idx]
     key = (voice, text)
     if key not in CACHE:
         buf = bytearray()
-        async for chunk in edge_tts.Communicate(get_tts_text(lang, text), voice).stream():
-            if chunk["type"] == "audio":
-                buf += chunk["data"]
+        for attempt in range(3):  # Edge TTS occasionally hiccups; retry before giving up
+            buf = bytearray()
+            try:
+                async for chunk in edge_tts.Communicate(get_tts_text(lang, text), voice).stream():
+                    if chunk["type"] == "audio":
+                        buf += chunk["data"]
+            except Exception:
+                buf = bytearray()
+            if buf:
+                break
+            await asyncio.sleep(0.6)
         if not buf:
             raise HTTPException(502, "speech synthesis failed")
         if len(CACHE) > 500:
