@@ -18,7 +18,7 @@ import edge_tts
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
-from generate_voices import VOICES, get_tts_text
+from generate_voices import STYLE, VOICES, get_tts_text, polish
 
 app = FastAPI()
 app.add_middleware(
@@ -43,13 +43,14 @@ async def tts(lang: str, text: str = Query(..., min_length=1, max_length=300), r
         raise HTTPException(404, "no voice for this language")
     idx = 0 if role == "agent" else 1
     voice = VOICES[lang][idx ^ 1] if alt else VOICES[lang][idx]
+    st = STYLE["agent" if role == "agent" else "customer"]
     key = (voice, text)
     if key not in CACHE:
         buf = bytearray()
         for attempt in range(3):  # Edge TTS occasionally hiccups; retry before giving up
             buf = bytearray()
             try:
-                async for chunk in edge_tts.Communicate(get_tts_text(lang, text), voice).stream():
+                async for chunk in edge_tts.Communicate(get_tts_text(lang, text), voice, rate=st["rate"], pitch=st["pitch"]).stream():
                     if chunk["type"] == "audio":
                         buf += chunk["data"]
             except Exception:
@@ -61,5 +62,5 @@ async def tts(lang: str, text: str = Query(..., min_length=1, max_length=300), r
             raise HTTPException(502, "speech synthesis failed")
         if len(CACHE) > 500:
             CACHE.clear()
-        CACHE[key] = bytes(buf)
+        CACHE[key] = await asyncio.to_thread(polish, bytes(buf))
     return Response(CACHE[key], media_type="audio/mpeg", headers={"Cache-Control": "public, max-age=86400"})

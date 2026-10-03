@@ -16,7 +16,7 @@ Two sets are generated per language:
     audio/<lang>/fc/<n>.mp3   agent = male voice,   customer = female voice   (female viewer name)
 Re-run this script whenever you change the call lines.
 """
-import asyncio, pathlib, sys
+import asyncio, pathlib, re, shutil, subprocess, sys
 import edge_tts
 
 # language -> (agent voice, customer voice)
@@ -30,9 +30,10 @@ VOICES = {
     # "or" (Odia): Edge TTS has no Odia voice. The demo falls back to captions only.
 }
 
-# small human touches: the customer speaks a little slower and lower than the agent
-# natural human neural voice settings without phase/pitch distortion
-STYLE = {"agent": {"rate": "+0%", "pitch": "+0Hz"}, "customer": {"rate": "+0%", "pitch": "+0Hz"}}
+# Phone-call pacing: slightly slower than the default read-aloud speed, customer a touch more relaxed.
+# Rate only - pitch shifting is what makes neural voices sound processed, so pitch stays at 0.
+# If it still feels fast/slow, change these two numbers (e.g. "-8%" slower, "+0%" default).
+STYLE = {"agent": {"rate": "-4%", "pitch": "+0Hz"}, "customer": {"rate": "-7%", "pitch": "+0Hz"}}
 
 LINES = {
     "en": [
@@ -109,19 +110,48 @@ LINES = {
 
 # phonetic replacements for TTS engines to pronounce acronyms distinctly (e.g. E-M-I instead of 'yemi')
 TTS_PRONUNCIATIONS = {
-    "en": {"EMI": "E-M-I"},
+    "en": {"EMI": "E M I"},
     "ta": {"EMI": "ஈ எம் ஐ"},
     "te": {"EMI": "ఈ ఎం ఐ"},
-    "ml": {"EMI": "ഇ എം ഐ"},
+    "ml": {"EMI": "ഈ എം ഐ"},
     "gu": {"EMI": "ઈ એમ આઈ"},
     "kn": {"EMI": "ಈ ಎಂ ಐ"},
     "or": {"EMI": "ଇ ଏମ୍ ଆଇ"},
 }
 
 def get_tts_text(lang, text):
+    # English: "INR 12,500" reads far more naturally as "12,500 rupees"
+    if lang == "en":
+        text = re.sub(r"INR\s*([\d,]+)", r"\1 rupees", text)
     for word, replacement in TTS_PRONUNCIATIONS.get(lang, {}).items():
         text = text.replace(word, replacement)
     return text
+
+
+# ---- optional polish with ffmpeg: trim Edge's leading/trailing silence and even out loudness,
+# so both speakers sit at the same volume and turns follow each other like a real call.
+FFMPEG = shutil.which("ffmpeg")
+if not FFMPEG:
+    try:
+        import imageio_ffmpeg
+        FFMPEG = imageio_ffmpeg.get_ffmpeg_exe()
+    except Exception:
+        FFMPEG = None
+POLISH = ("silenceremove=start_periods=1:start_threshold=-50dB:start_silence=0.04,"
+          "areverse,silenceremove=start_periods=1:start_threshold=-50dB:start_silence=0.10,areverse,"
+          "loudnorm=I=-18:TP=-2:LRA=9")
+
+
+def polish(data: bytes) -> bytes:
+    if not FFMPEG or not data:
+        return data
+    try:
+        r = subprocess.run([FFMPEG, "-loglevel", "error", "-i", "pipe:0", "-af", POLISH,
+                            "-ar", "24000", "-ac", "1", "-b:a", "64k", "-f", "mp3", "pipe:1"],
+                           input=data, capture_output=True, timeout=30)
+        return r.stdout if r.returncode == 0 and len(r.stdout) > 1000 else data
+    except Exception:
+        return data
 
 OUT = pathlib.Path(__file__).resolve().parent / "audio"
 
@@ -137,6 +167,7 @@ async def synth(sem, lang, i, text, voice, role, sub=""):
                 st = STYLE[role]
                 await edge_tts.Communicate(spoken_text, voice, rate=st["rate"], pitch=st["pitch"]).save(str(path))
                 if path.stat().st_size > 0:
+                    path.write_bytes(await asyncio.to_thread(polish, path.read_bytes()))
                     print(f"ok   {lang}/{sub + '/' if sub else ''}{i}.mp3  {voice}")
                     return True
             except Exception as e:  # network hiccup: retry
@@ -147,6 +178,9 @@ async def synth(sem, lang, i, text, voice, role, sub=""):
 
 
 async def main(langs):
+    if not FFMPEG:
+        print("note: ffmpeg not found - clips keep Edge's silence padding and uneven loudness "
+              "(install ffmpeg and re-run for a more natural result)\n")
     avail = {v["ShortName"] for v in await edge_tts.list_voices()}
     sem = asyncio.Semaphore(4)
     jobs = []
