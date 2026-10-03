@@ -3343,7 +3343,17 @@
             function pickV(l) { var m = vcs.filter(function (v) { return v.lang.replace('_', '-').toLowerCase().indexOf(LC[l]) === 0 }); if (l === 'en') { var ei = m.filter(function (v) { return /en-in/i.test(v.lang.replace('_', '-')) }); if (ei.length) m = ei } return m }
             function isF(v) { return /female|woman|heera|heena|veena|neerja|swara|lekha|priya|kalpana|aditi|raveena|zira|samantha|karen|tessa|kyoko|shruti|pallavi|sangeeta/i.test(v.name) }
             var PL = new Audio(), AUD = [], CF = {}, SIL = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=';
-            function clipSrc(l, k) { return 'audio/' + l + (fcm ? '/fc/' : '/') + k + '.mp3' }
+            var PRE_NAMES = ['priya', 'praveen', 'bhavana', 'bhavani', 'divya', 'sneha', 'kavya', 'anitha', 'anita', 'swathi', 'deepika', 'rahul', 'suresh', 'ramesh', 'anil'];
+            function clipSrc(l, k) {
+                var raw = (cname || '').toLowerCase().replace(/[^a-z]/g, '');
+                if (PRE_NAMES.indexOf(raw) >= 0 && (k % 2 === 0)) {
+                    if (raw !== 'priya' && raw !== 'praveen') {
+                        var nameKey = raw === 'anita' ? 'anitha' : raw;
+                        return 'audio/' + l + '/names/' + nameKey + '/' + k + '.mp3';
+                    }
+                }
+                return 'audio/' + l + (fcm ? '/fc/' : '/') + k + '.mp3';
+            }
             function preload(l, n) { if (CF[l + (fcm ? 'f' : '')]) return; for (var k = 0; k < n; k++) { var a = new Audio(); a.preload = 'auto'; a.src = clipSrc(l, k); AUD.push(a) } }
             function playClip(l, k) { return playSrc(clipSrc(l, k)) }
             function playSrc(src) {
@@ -3480,7 +3490,9 @@
                 var srcBase = fcm ? (PN_FC[L] || PE_FC) : (PN[L] || PE);
                 var srcEn = fcm ? PE_FC : PE;
                 var r = { lines: srcBase, en: srcEn, idx: [], name: curName, rec: addrFor('en', curName) };
-                var isDef = !cname || (fcm && curName.toLowerCase() === 'priya') || (!fcm && curName.toLowerCase() === 'praveen');
+                var raw = curName.toLowerCase().replace(/[^a-z]/g, '');
+                var isDef = !cname || (fcm && raw === 'priya') || (!fcm && raw === 'praveen');
+                var isPre = PRE_NAMES.indexOf(raw) >= 0;
                 if (!isDef) {
                     var oldAddr = fcm ? DEF_NAMES.F[L] : DEF_NAMES.M[L];
                     var newAddr = addrFor(L, xlit(curName, L));
@@ -3492,7 +3504,9 @@
                     r.en = srcEn.map(function (t, i) {
                         return (i % 2 === 0 && oldEnAddr) ? t.split(oldEnAddr).join(newEnAddr) : t;
                     });
-                    r.idx = [0, 2, 4, 6];
+                    if (!isPre) {
+                        r.idx = [0, 2, 4, 6];
+                    }
                 }
                 return r;
             }

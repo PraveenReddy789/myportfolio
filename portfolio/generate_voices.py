@@ -254,6 +254,113 @@ async def synth(sem, lang, i, text, voice, role, sub=""):
     return False
 
 
+PRE_GEN_NAMES = {
+    "bhavana": ("F", {
+        "en": "Ms. Bhavana",
+        "te": "భావన గారు",
+        "ta": "பாவனா அவர்களே",
+        "ml": "ശ്രീമതി ഭാവന",
+        "gu": "શ્રીમતી ભાવના",
+        "kn": "ಭಾವನಾ ಅವರೇ"
+    }),
+    "bhavani": ("F", {
+        "en": "Ms. Bhavani",
+        "te": "భవాని గారు",
+        "ta": "பவானி அவர்களே",
+        "ml": "ശ്രീമതി ഭവാനി",
+        "gu": "શ્રીમતી ભવાની",
+        "kn": "ಭವಾನಿ ಅವರೇ"
+    }),
+    "divya": ("F", {
+        "en": "Ms. Divya",
+        "te": "దివ్య గారు",
+        "ta": "திவ்யா அவர்களே",
+        "ml": "ശ്രീമതി ദിവ്യ",
+        "gu": "શ્રીમતી દિવ્યા",
+        "kn": "ದಿವ್ಯ ಅವರೇ"
+    }),
+    "sneha": ("F", {
+        "en": "Ms. Sneha",
+        "te": "స్నేహ గారు",
+        "ta": "ஸ்நேகா அவர்களே",
+        "ml": "ശ്രീമതി സ്നേഹ",
+        "gu": "શ્રીમતી સ્નેહા",
+        "kn": "ಸ್ನೇಹ ಅವರೇ"
+    }),
+    "kavya": ("F", {
+        "en": "Ms. Kavya",
+        "te": "కావ్య గారు",
+        "ta": "காவ்யா அவர்களே",
+        "ml": "ശ്രീമതി കാവ്യ",
+        "gu": "શ્રીમતી કાવ્યા",
+        "kn": "ಕಾವ್ಯ ಅವರೇ"
+    }),
+    "anitha": ("F", {
+        "en": "Ms. Anitha",
+        "te": "అనిత గారు",
+        "ta": "அனிதா அவர்களே",
+        "ml": "ശ്രീമതി അനിത",
+        "gu": "શ્રીમતી અનિતા",
+        "kn": "ಅನಿತಾ ಅವರೇ"
+    }),
+    "swathi": ("F", {
+        "en": "Ms. Swathi",
+        "te": "స్వాతి గారు",
+        "ta": "சுவாதி அவர்களே",
+        "ml": "ശ്രീമതി స్వాതി",
+        "gu": "શ્રીમતી સ્વાતિ",
+        "kn": "ಸ್ವಾತಿ ಅವರೇ"
+    }),
+    "deepika": ("F", {
+        "en": "Ms. Deepika",
+        "te": "దీపిక గారు",
+        "ta": "தீபிகா அவர்களே",
+        "ml": "ശ്രീമതി ദീപിക",
+        "gu": "શ્રીમતી દીપિકા",
+        "kn": "ದೀಪಿಕಾ ಅವರೇ"
+    }),
+    "rahul": ("M", {
+        "en": "Mr. Rahul",
+        "te": "రాహుల్ గారు",
+        "ta": "ராகுல் அவர்களே",
+        "ml": "ശ്രീ രാഹുൽ",
+        "gu": "શ્રી રાહુલ",
+        "kn": "ರಾಹುಲ್ ಅವರೇ"
+    }),
+    "suresh": ("M", {
+        "en": "Mr. Suresh",
+        "te": "సురేష్ గారు",
+        "ta": "சுரேஷ் அவர்களே",
+        "ml": "ശ്രീ സുരേഷ്",
+        "gu": "શ્રી સુરેશ",
+        "kn": "ಸುರೇಶ್ ಅವರೇ"
+    }),
+    "ramesh": ("M", {
+        "en": "Mr. Ramesh",
+        "te": "రమేష్ గారు",
+        "ta": "ரமேஷ் அவர்களே",
+        "ml": "ശ്രീ రమేష్",
+        "gu": "શ્રી రமேશ",
+        "kn": "ರಮೇಶ್ ಅವರೇ"
+    }),
+    "anil": ("M", {
+        "en": "Mr. Anil",
+        "te": "అనిల్ గారు",
+        "ta": "அனில் அவர்களே",
+        "ml": "ശ്രീ അനിൽ",
+        "gu": "શ્રી અનિલ",
+        "kn": "ಅನಿಲ್ ಅವರೇ"
+    })
+}
+
+DEF_NAMES_GEN = {
+    "M": { "en": "Mr. Praveen", "te": "ప్రవీణ్ గారు", "ta": "பிரவீன் அவர்களே", "ml": "ശ്രീ പ്രവീൺ", "gu": "શ્રી પ્રવીણ", "kn": "ಪ್ರವೀಣ್ ಅವರೇ" },
+    "F": { "en": "Ms. Priya", "te": "ప్రియ గారు", "ta": "பிரியா அவர்களே", "ml": "ശ്രീമതി Priya".replace("Priya", "ప్రియ"), "gu": "શ્રીમતી પ્રિયા", "kn": "ಪ್ರಿಯಾ ಅವರೇ" }
+}
+DEF_NAMES_GEN["F"]["ml"] = "ശ്രീമതി പ്രിയ"
+DEF_NAMES_GEN["F"]["te"] = "ప్రియ గారు"
+
+
 async def main(langs):
     if not FFMPEG:
         print("note: ffmpeg not found - clips keep Edge's silence padding and uneven loudness "
@@ -275,6 +382,20 @@ async def main(langs):
             # female customer set (Priya): male agent, female customer
             text_fc = LINES_FC[lang][i] if lang in LINES_FC else text
             jobs.append(synth(sem, lang, i, text_fc, cust if role == "agent" else agent, role, "fc"))
+
+        # Pre-render common demo names so they are 100% human neural voice with 0 lag
+        for name_key, (gender, name_map) in PRE_GEN_NAMES.items():
+            if lang not in name_map:
+                continue
+            name_addr = name_map[lang]
+            base_lines = LINES_FC[lang] if gender == "F" else LINES[lang]
+            def_addr = DEF_NAMES_GEN["F"][lang] if gender == "F" else DEF_NAMES_GEN["M"][lang]
+            # Agent voice: if customer is female, agent is male (cust); if customer is male, agent is female (agent)
+            agent_voice = cust if gender == "F" else agent
+            for i in [0, 2, 4, 6]:
+                line_text = base_lines[i].replace(def_addr, name_addr)
+                jobs.append(synth(sem, lang, i, line_text, agent_voice, "agent", f"names/{name_key}"))
+
     res = await asyncio.gather(*jobs)
     print(f"\nDone: {sum(res)}/{len(res)} clips in {OUT}")
 
