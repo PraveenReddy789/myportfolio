@@ -3743,6 +3743,62 @@
                 return 'promise';
             }
 
+            function personalize(base, L) {
+                var rz = REASONS[Math.floor(Math.random() * REASONS.length)];
+                var r = { lines: base.slice(), en: PE.slice(), idx: [], name: '', rec: '', reason: rz };
+                fcm = !!cname && cgen === 'F';
+                r.lines[3] = rz[L] || rz.en;
+                r.en[3] = rz.en;
+                if (rz.key !== 'salary_delayed') r.idx.push(3);
+                if (!cname) return r;
+                r.name = cname; r.rec = addrFor('en', cname);
+                r.lines = inject(r.lines, addrFor(L, xlit(cname, L)));
+                r.en = inject(r.en, r.rec);
+                r.idx = [0, 4, 6];
+                if (rz.key !== 'salary_delayed') r.idx.push(3);
+                return r;
+            }
+            var EMIS = { en: 'E M I', ta: '\u0b88 \u0b8e\u0bae\u0bcd \u0b90', te: '\u0c08 \u0c0e\u0c02 \u0c10', ml: '\u0d08 \u0d0e\u0d02 \u0d10', gu: '\u0a88 \u0a8f\u0aae \u0a86\u0a88', kn: '\u0c88 \u0c8e\u0c82 \u0c90', 'or': '\u0b07 \u0b0f\u0b2e\u0b4d \u0b06\u0b07' };
+            function ttsFix(l, t) { if (l === 'en') t = t.replace(/INR\s*([\d,]+)/g, '$1 rupees'); return t.replace(/EMI/g, EMIS[l] || 'E M I') }
+            function natScore(v) { return /natural|neural|online/i.test(v.name) ? 1 : 0 }
+            function fetchTTS(u) {
+                var n = 0;
+                function once() {
+                    var ab = new AbortController(), t = setTimeout(function () { ab.abort() }, 60000);
+                    return fetch(u, { signal: ab.signal }).then(function (r) { clearTimeout(t); if (!r.ok) throw 0; return r.blob() }).then(function (b) { if (!b.size) throw 0; return URL.createObjectURL(b) }).catch(function () { clearTimeout(t); if (++n < 2) return sleep(600).then(once); return null })
+                }
+                return once()
+            }
+            function warmTTS() {
+                if (!TTS_ENDPOINT || warmed) return; warmed = true;
+                try { fetch(TTS_ENDPOINT.replace(/\/tts(\?.*)?$/, '/health')).catch(function () { }) } catch (e) { }
+            }
+            function prefetchCustom(pz, L) {
+                PC = {};
+                if (!TTS_ENDPOINT || !snd) return;
+                pz.idx.forEach(function (k) {
+                    var isAgent = (k % 2 === 0);
+                    var role = isAgent ? 'agent' : 'customer';
+                    var u = TTS_ENDPOINT + (TTS_ENDPOINT.indexOf('?') < 0 ? '?' : '&') + 'lang=' + L + '&role=' + role + '&alt=' + (fcm ? 1 : 0) + '&text=' + encodeURIComponent(pz.lines[k]);
+                    PC[k] = fetchTTS(u);
+                })
+            }
+            async function playCustom(k) {
+                if (!PC[k]) return false;
+                var u = await Promise.race([PC[k], sleep(TTS_WAIT).then(function () { return null })]);
+                return u ? playSrc(u) : false
+            }
+            function updPv() {
+                var pv = document.getElementById('plpv'), gn = document.getElementById('plgn'), inp = document.getElementById('plnmi');
+                if (!formOn || !pv || !inp) return;
+                gn.style.display = 'flex';
+                var nm = cleanName(inp.value);
+                pv.textContent = '';
+                if (!nm) { pv.textContent = 'Leave it blank for a generic greeting.'; return }
+                pv.appendChild(document.createTextNode('In ' + PNM[pcur] + ' the agent will say: '));
+                var b = document.createElement('b'); b.textContent = addrFor(pcur, xlit(nm, pcur)); pv.appendChild(b); pv.appendChild(document.createTextNode(' (customer voice: ' + (cgen === 'F' ? 'female' : 'male') + ')'))
+            }
+
             function askName() {
                 if (running) return;
                 if (formOn) { var i0 = document.getElementById('plnmi'); if (i0) i0.focus({ preventScroll: true }); return }
