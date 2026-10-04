@@ -3473,13 +3473,42 @@
                 return 'audio/' + l + (fcm ? '/fc/' : '/') + k + '.mp3';
             }
             function preload(l, n) { if (CF[l + (fcm ? 'f' : '')]) return; for (var k = 0; k < n; k++) { var a = new Audio(); a.preload = 'auto'; a.src = clipSrc(l, k); AUD.push(a) } }
+            var curAudio = null;
+            function stopCurAudio() {
+                if (curAudio) {
+                    try {
+                        curAudio.pause();
+                        curAudio.src = '';
+                        curAudio.onended = null;
+                        curAudio.onerror = null;
+                        curAudio.onpause = null;
+                    } catch (e) { }
+                    curAudio = null;
+                }
+            }
             function playClip(l, k) { return playSrc(clipSrc(l, k)) }
             function playSrc(src) {
                 return new Promise(function (res) {
-                    var a = PL, done = false, tm; function f(ok) { if (done) return; done = true; clearTimeout(tm); a.onended = a.onerror = a.onpause = null; res(ok) }
-                    a.onended = function () { f(true) }; a.onerror = function () { f(false) }; a.onpause = function () { f(true) };
-                    a.muted = false; a.src = src; var pr = a.play(); if (pr && pr.catch) pr.catch(function () { f(false) }); tm = setTimeout(function () { f(false); a.pause() }, 15000)
-                })
+                    stopCurAudio();
+                    var a = new Audio();
+                    curAudio = a;
+                    var done = false, tm;
+                    function f(ok) {
+                        if (done) return;
+                        done = true;
+                        clearTimeout(tm);
+                        a.onended = a.onerror = null;
+                        if (curAudio === a) curAudio = null;
+                        res(ok);
+                    }
+                    a.onended = function () { f(true) };
+                    a.onerror = function () { f(false) };
+                    a.muted = false;
+                    a.src = src;
+                    var pr = a.play();
+                    if (pr && pr.catch) pr.catch(function () { f(false) });
+                    tm = setTimeout(function () { f(true); try { a.pause(); } catch (e) { } }, 20000);
+                });
             }
             async function say(t, ag, l, k, pers) {
                 if (!snd) return false;
@@ -3489,17 +3518,15 @@
                     if (!snd) return false;
                     var okg = await playClip(l, k);
                     if (okg) return true;
-                    if (!snd) return false;
-                    return sayTTS(t, ag, l);
+                    return false;
                 }
                 var ck = l + (fcm ? 'f' : '');
                 if (!CF[ck]) {
                     var ok = await playClip(l, k);
                     if (ok) return true;
-                    if (!snd) return false;
                     CF[ck] = true;
                 }
-                return sayTTS(t, ag, l);
+                return false;
             }
             function sayTTS(t, ag, l) {
                 /* Never fall back to robotic browser speechSynthesis */
@@ -3796,23 +3823,24 @@
             }
             async function speakDynamic(t, ag, l, intKey) {
                 if (!snd) return false;
+                var played = false;
                 if (intKey && REPLY_CACHE[intKey]) {
                     var cachedBlob = await Promise.race([REPLY_CACHE[intKey], sleep(3500).then(function () { return null })]);
                     if (cachedBlob) {
-                        var ok = await playSrc(cachedBlob);
-                        if (ok) return true;
+                        played = await playSrc(cachedBlob);
+                        if (played) return true;
                     }
                 }
-                if (TTS_ENDPOINT) {
+                if (!played && TTS_ENDPOINT) {
                     var role = ag ? 'agent' : 'customer';
                     var u = TTS_ENDPOINT + (TTS_ENDPOINT.indexOf('?') < 0 ? '?' : '&') + 'lang=' + l + '&role=' + role + '&alt=' + (fcm ? 1 : 0) + '&text=' + encodeURIComponent(t);
                     var blobUrl = await fetchTTS(u);
                     if (blobUrl) {
-                        var ok = await playSrc(blobUrl);
-                        if (ok) return true;
+                        played = await playSrc(blobUrl);
+                        if (played) return true;
                     }
                 }
-                return sayTTS(t, ag, l);
+                return played;
             }
             function updPv() {
                 var pv = document.getElementById('plpv'), gn = document.getElementById('plgn'), inp = document.getElementById('plnmi');
@@ -3856,7 +3884,7 @@
                     var en = pcur === 'en', pz = personalize(en ? PE : PN[pcur], pcur), lines = pz.lines;
                     jn.innerHTML = '<div class="plsc"><div class="plwho"><div class="plpp">' + AGI + '<small>Agent</small></div><div class="plwire"><i></i><i></i><i></i></div><div class="plpp ring" id="plcu">' + CUI + '<small>' + (pz.name || 'You (Customer)') + '</small></div></div><div class="plstt" id="plst">Agent is calling you...</div><div class="plcv" id="plcv"></div><div id="plmicwrap"></div></div>';
                     var stt = document.getElementById('plst'), cv = document.getElementById('plcv'), cu = document.getElementById('plcu'), wr = jn.querySelector('.plwire'), mw = document.getElementById('plmicwrap');
-                    if (snd) { ctx(); lv(); PL.muted = true; PL.src = SIL; var up = PL.play(); if (up && up.catch) up.catch(function () { }); if (window.speechSynthesis) { speechSynthesis.cancel(); speechSynthesis.speak(new SpeechSynthesisUtterance('')) } }
+                    if (snd) { ctx(); lv(); PL.muted = true; PL.src = SIL; var up = PL.play(); if (up && up.catch) up.catch(function () { }); if (window.speechSynthesis) { speechSynthesis.cancel(); } }
                     var noted = false; preload(pcur, 8); prefetchCustom(pz, pcur); st(0, 'on', 1); st(0, 'vib', 1); ringtone(); await sleep(snd ? 3400 : 2300); if (snd && pz.idx.length && PC[0]) await Promise.race([PC[0], sleep(TTS_WAIT)]);
                     stt.textContent = 'Call Connected'; pickup(); cu.classList.remove('ring'); wr.classList.add('live'); jn.querySelectorAll('.plpp').forEach(function (x) { x.classList.add('talk') }); st(1, 'on', 1); st(1, 'vib', 1); await sleep(900);
                     stt.textContent = 'Conversation in progress (' + PNM[pcur] + ')...'; var pp = jn.querySelectorAll('.plpp');
@@ -3871,21 +3899,19 @@
                         var b0 = document.createElement('div'); b0.className = 'plbb ag'; b0.innerHTML = '<em>Agent</em>'; b0.appendChild(document.createTextNode(lines[0])); cv.appendChild(b0); jn.scrollTop = jn.scrollHeight;
                         pp[0].classList.add('talk'); pp[1].classList.remove('talk');
                         await say(lines[0], true, pcur, 0, true);
-                        await sleep(220);
+                        await sleep(250);
 
-                        var dueText = (pcur === 'en' ? 'Your EMI of INR 12,500 was due on 20 September. When can you make the payment?' : (pcur === 'te' ? 'మీ ₹12,500 EMI సెప్టెంబర్ 20 న చెల్లించాల్సి ఉంది. ఎప్పుడు చెల్లించగలరు?' : (lines[2] + ' ' + lines[4])));
-                        var b1 = document.createElement('div'); b1.className = 'plbb ag'; b1.innerHTML = '<em>Agent</em>'; b1.appendChild(document.createTextNode(dueText)); cv.appendChild(b1); jn.scrollTop = jn.scrollHeight;
+                        var b1 = document.createElement('div'); b1.className = 'plbb ag'; b1.innerHTML = '<em>Agent</em>'; b1.appendChild(document.createTextNode(lines[2])); cv.appendChild(b1); jn.scrollTop = jn.scrollHeight;
                         await say(lines[2], true, pcur, 2, false);
-                        await say(lines[4], true, pcur, 4, false);
                         pp[0].classList.remove('talk');
-                        dialogueTranscript.push('Agent: ' + lines[0] + ' ' + dueText);
+                        dialogueTranscript.push('Agent: ' + lines[0] + ' ' + lines[2]);
 
                         /* ---- Live Customer Speaking Turn (Microphone / Chips) ---- */
-                        stt.textContent = '🔴 Listening... Speak into your mic or select an option';
+                        stt.textContent = '🎙️ Tap 🎙️ to speak or click an option below:';
                         pp[1].classList.add('talk');
                         var cfg = INTENTS[pcur] || INTENTS.en;
                         var chipHtml = cfg.chips.map(function (c) { return '<button type="button" class="plchip" data-t="' + c.text.replace(/"/g, '&quot;') + '">' + c.label + '</button>' }).join('');
-                        mw.innerHTML = '<div class="plmic-box"><div class="plmic-row"><button type="button" class="plmic-rec" id="plmicbtn" title="Toggle Live Microphone" aria-label="Microphone">🎙️</button><input type="text" class="plmic-inp" id="plmictext" placeholder="Speak into mic or type here..." aria-label="Customer reply"><button type="button" class="plmic-send" id="plmicsend">Send</button></div><div class="plchips">' + chipHtml + '</div></div>';
+                        mw.innerHTML = '<div class="plmic-box"><div class="plmic-row"><button type="button" class="plmic-rec off" id="plmicbtn" title="Tap to Speak (Live Mic)" aria-label="Microphone">🎙️</button><input type="text" class="plmic-inp" id="plmictext" placeholder="Tap 🎙️ to speak or type here..." aria-label="Customer reply"><button type="button" class="plmic-send" id="plmicsend">Send</button></div><div class="plchips">' + chipHtml + '</div></div>';
 
                         var micBtn = document.getElementById('plmicbtn'), micInp = document.getElementById('plmictext'), sendBtn = document.getElementById('plmicsend');
                         var recognition = null, isListening = false, userFinished = false, silenceTimer = null;
@@ -3899,6 +3925,7 @@
                                 if (!val) val = cfg.chips[0].text;
                                 if (recognition) {
                                     try { recognition.abort(); } catch (e) { }
+                                    recognition = null;
                                 }
                                 mw.innerHTML = '';
                                 resolve(val);
@@ -3909,27 +3936,52 @@
                             mw.querySelectorAll('.plchip').forEach(function (btn) { btn.addEventListener('click', function () { submitText(btn.dataset.t) }) });
 
                             var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-                            if (SR) {
-                                try {
-                                    recognition = new SR();
-                                    recognition.lang = REC_LANGS[pcur] || 'en-IN';
-                                    recognition.interimResults = true;
-                                    recognition.continuous = true;
-                                    recognition.maxAlternatives = 1;
 
-                                    function startRec() {
-                                        if (userFinished) return;
-                                        try {
-                                            recognition.start();
-                                        } catch (err) { }
+                            async function toggleListening() {
+                                if (userFinished) return;
+                                if (isListening) {
+                                    if (recognition) {
+                                        try { recognition.stop(); } catch (e) { }
                                     }
+                                    return;
+                                }
+
+                                /* Request permission on user gesture (required for Safari / macOS / iOS) */
+                                if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                                    try {
+                                        var stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                                        stream.getTracks().forEach(function (t) { t.stop(); });
+                                    } catch (err) {
+                                        console.warn('Microphone permission:', err);
+                                        stt.textContent = '⚠️ Mic access needed. Tap 🎙️ to allow, or select an option below:';
+                                    }
+                                }
+
+                                if (!SR) {
+                                    stt.textContent = '⚠️ Speech recognition not supported in this browser. Please select an option below:';
+                                    micInp.focus();
+                                    return;
+                                }
+
+                                try {
+                                    if (recognition) {
+                                        try { recognition.abort(); } catch (e) { }
+                                    }
+                                    recognition = new SR();
+                                    var targetLang = REC_LANGS[pcur] || 'en-IN';
+                                    recognition.lang = targetLang;
+                                    recognition.interimResults = true;
+                                    recognition.continuous = false;
+                                    recognition.maxAlternatives = 1;
 
                                     recognition.onstart = function () {
                                         isListening = true;
                                         micBtn.classList.remove('off');
                                         micBtn.textContent = '🔴';
-                                        stt.textContent = '🔴 Microphone active: Speak your response now...';
+                                        micInp.placeholder = 'Listening... Speak into your mic now';
+                                        stt.textContent = '🔴 Listening... Speak into your microphone now';
                                     };
+
                                     recognition.onresult = function (event) {
                                         var fullStr = '';
                                         for (var i = 0; i < event.results.length; ++i) {
@@ -3941,46 +3993,49 @@
                                             stt.textContent = '🎙️ Heard: "' + fullStr + '"';
                                             clearTimeout(silenceTimer);
                                             silenceTimer = setTimeout(function () {
-                                                if (!userFinished && micInp.value.trim().length > 1) {
+                                                if (!userFinished && micInp.value.trim().length > 0) {
                                                     submitText(micInp.value);
                                                 }
-                                            }, 1100);
+                                            }, 1200);
                                         }
                                     };
+
                                     recognition.onerror = function (err) {
                                         console.warn('SpeechRecognition error:', err);
-                                        if (err && err.error === 'not-allowed') {
-                                            stt.textContent = '⚠️ Mic access denied. Click 🎙️ to retry, type, or click a chip.';
-                                            isListening = false;
-                                            micBtn.classList.add('off');
-                                            micBtn.textContent = '🎙️';
+                                        isListening = false;
+                                        micBtn.classList.add('off');
+                                        micBtn.textContent = '🎙️';
+                                        if (err && (err.error === 'language-not-supported' || err.error === 'service-not-allowed')) {
+                                            if (recognition && recognition.lang !== 'en-IN') {
+                                                try {
+                                                    recognition.lang = 'en-IN';
+                                                    recognition.start();
+                                                    return;
+                                                } catch (e2) { }
+                                            }
+                                            stt.textContent = '⚠️ Safari Indic dictation not enabled. Tap mic or click an option below:';
+                                        } else if (err && err.error === 'not-allowed') {
+                                            stt.textContent = '⚠️ Mic access denied. Tap 🎙️ to allow, or select an option below:';
                                         }
                                     };
+
                                     recognition.onend = function () {
                                         isListening = false;
                                         micBtn.classList.add('off');
                                         micBtn.textContent = '🎙️';
-                                        if (!userFinished) {
-                                            setTimeout(function () {
-                                                if (!userFinished) startRec();
-                                            }, 250);
+                                        if (!userFinished && micInp.value.trim().length > 0) {
+                                            submitText(micInp.value);
                                         }
                                     };
-                                    micBtn.addEventListener('click', function () {
-                                        if (isListening) {
-                                            try { recognition.stop(); } catch (e) { }
-                                        } else {
-                                            startRec();
-                                        }
-                                    });
-                                    startRec();
+
+                                    recognition.start();
                                 } catch (e) {
-                                    console.warn('SpeechRecognition init:', e);
+                                    console.warn('Failed to start recognition:', e);
+                                    stt.textContent = '⚠️ Could not start mic. Tap 🎙️ or click an option below:';
                                 }
-                            } else {
-                                micBtn.classList.add('off');
-                                micInp.placeholder = 'SpeechRecognition unavailable. Type or click a chip below:';
                             }
+
+                            micBtn.addEventListener('click', toggleListening);
                         });
 
                         customerSpoken = await customerPromise;
