@@ -3326,14 +3326,13 @@
                 return '<div class="pdh"><div><h4>Overview</h4><p>Today&#39;s voice bot performance</p></div><div class="pdm"><i></i>Live &middot; ' + (show ? 'updated just now' : 'updated 11s ago') + '</div></div><div class="pdk">' + kp + '</div><div class="pdg"><div class="pdp"><h5>Call Outcomes</h5><p>Distribution for 2026-10-02</p>' + br + '</div><div class="pdp"><h5>Sentiment</h5><p>Of answered calls</p><div class="pdd"><svg viewBox="0 0 100 100" aria-hidden="true">' + cs + '</svg><div class="pdlg">' + lg + '</div></div></div></div>' + last
             }
             pl.addEventListener('click', function (e) { var b = e.target.closest('button'); if (!b || running) return; pcur = b.dataset.l; preload(pcur, 8); setTimeout(updPv, 0); pl.querySelectorAll('button').forEach(function (x) { x.classList.toggle('on', x === b) }) });
-            /* call audio: synthesized ringtone + browser voices */
-            var snd = true, ac = null, mg = null, vcs = [];
+            /* call audio: authentic telephone ringtone + neural voices */
+            var snd = true, ac = null, mg = null, vcs = [], curAudio = null, ringAudio = null;
             function lv() { if (window.speechSynthesis) vcs = speechSynthesis.getVoices() || [] }
             if (window.speechSynthesis) { lv(); if (speechSynthesis.addEventListener) speechSynthesis.addEventListener('voiceschanged', lv); else speechSynthesis.onvoiceschanged = lv }
             var LC = { en: 'en', ta: 'ta', te: 'te', ml: 'ml', gu: 'gu', 'or': 'or', kn: 'kn' };
             function pickV(l) { var m = vcs.filter(function (v) { return v.lang.replace('_', '-').toLowerCase().indexOf(LC[l]) === 0 }); if (l === 'en') { var ei = m.filter(function (v) { return /en-in/i.test(v.lang.replace('_', '-')) }); if (ei.length) m = ei } return m }
-            function isF(v) { return /female|woman|heera|heena|veena|neerja|swara|lekha|priya|kalpana|aditi|raveena|zira|samantha|karen|tessa|kyoko|shruti|pallavi|sangeeta/i.test(v.name) }
-            var PL = new Audio(), AUD = [], CF = {}, SIL = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=';
+            var SIL = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=';
             var PRE_NAMES = [
                 'neha', 'priya', 'bhavana', 'bhavani', 'divya', 'sneha', 'kavya', 'anitha', 'anita',
                 'swathi', 'swati', 'deepika', 'pooja', 'puja', 'anjali', 'meena',
@@ -3349,45 +3348,160 @@
                 }
                 return 'audio/' + l + (fcm ? '/fc/' : '/') + k + '.mp3';
             }
-            function preload(l, n) { if (CF[l + (fcm ? 'f' : '')]) return; for (var k = 0; k < n; k++) { var a = new Audio(); a.preload = 'auto'; a.src = clipSrc(l, k); AUD.push(a) } }
-            function playClip(l, k) { return playSrc(clipSrc(l, k)) }
+            function preload(l, n) {
+                for (var k = 0; k < n; k++) {
+                    var a = new Audio();
+                    a.preload = 'auto';
+                    a.src = clipSrc(l, k);
+                }
+            }
+            function stopCurAudio() {
+                if (curAudio) {
+                    try {
+                        curAudio.onended = curAudio.onerror = null;
+                        curAudio.pause();
+                        curAudio.src = '';
+                    } catch (e) { }
+                    curAudio = null;
+                }
+            }
             function playSrc(src) {
                 return new Promise(function (res) {
-                    var a = PL, done = false, tm; function f(ok) { if (done) return; done = true; clearTimeout(tm); a.onended = a.onerror = a.onpause = null; res(ok) }
-                    a.onended = function () { f(true) }; a.onerror = function () { f(false) }; a.onpause = function () { f(true) };
-                    a.muted = false; a.src = src; var pr = a.play(); if (pr && pr.catch) pr.catch(function () { f(false) }); tm = setTimeout(function () { f(false); a.pause() }, 15000)
-                })
+                    if (!snd) { res(false); return }
+                    stopCurAudio();
+                    var a = new Audio();
+                    curAudio = a;
+                    var done = false, tm;
+                    function f(ok) {
+                        if (done) return;
+                        done = true;
+                        clearTimeout(tm);
+                        a.onended = a.onerror = null;
+                        if (curAudio === a) curAudio = null;
+                        res(ok);
+                    }
+                    a.onended = function () { f(true) };
+                    a.onerror = function () { f(false) };
+                    a.preload = 'auto';
+                    a.src = src;
+                    var pr = a.play();
+                    if (pr && pr.catch) {
+                        pr.catch(function () { f(false) });
+                    }
+                    tm = setTimeout(function () { f(true); try { a.pause() } catch (e) { } }, 18000);
+                });
             }
+            function playClip(l, k) { return playSrc(clipSrc(l, k)) }
             async function say(t, ag, l, k, pers) {
                 if (!snd) return false;
-                if (pers) {
-                    var okp = await playCustom(k);
-                    if (okp) return true;
-                    if (!snd) return false;
-                    var okg = await playClip(l, k);
-                    if (okg) return true;
-                    return false;
-                }
-                var ck = l + (fcm ? 'f' : '');
-                if (!CF[ck]) {
+                var raw = (cname || '').toLowerCase().replace(/[^a-z]/g, '');
+                if (raw === 'anita') raw = 'anitha';
+                if (raw === 'swati') raw = 'swathi';
+                if (raw === 'puja') raw = 'pooja';
+                var isCustomerTurn = (k % 2 !== 0);
+                var hasLocalClip = (!cname) || (PRE_NAMES.indexOf(raw) >= 0) || isCustomerTurn;
+
+                // Priority 1: Instant local pre-rendered audio (0ms latency!)
+                if (hasLocalClip) {
                     var ok = await playClip(l, k);
                     if (ok) return true;
-                    CF[ck] = true;
                 }
-                return false;
+
+                // Priority 2: Custom dynamic neural TTS (only for unfamiliar novel names)
+                if (pers && PC[k]) {
+                    var okp = await playCustom(k);
+                    if (okp) return true;
+                }
+
+                // Priority 3: Fallback to standard generic clip
+                var okg = await playSrc('audio/' + l + (fcm ? '/fc/' : '/') + k + '.mp3');
+                return okg;
             }
             function sayTTS(t, ag, l) {
                 /* Never fall back to robotic browser speechSynthesis */
                 return Promise.resolve(false);
             }
-            function ctx() { if (!ac) { var C = window.AudioContext || window.webkitAudioContext; if (C) { ac = new C(); mg = ac.createGain(); mg.gain.value = snd ? 1 : 0; mg.connect(ac.destination) } } if (ac && ac.state === 'suspended') ac.resume(); return ac }
-            function beep(t0, dur, fr, vol) { var g = ac.createGain(); g.gain.setValueAtTime(0, t0); g.gain.linearRampToValueAtTime(vol, t0 + .02); g.gain.setValueAtTime(vol, t0 + dur - .03); g.gain.linearRampToValueAtTime(0, t0 + dur); g.connect(mg); fr.forEach(function (f) { var o = ac.createOscillator(); o.type = 'sine'; o.frequency.value = f; o.connect(g); o.start(t0); o.stop(t0 + dur + .02) }) }
-            function ringtone() { if (!snd || !ctx()) return; var t = ac.currentTime + .05;[0, 2.2].forEach(function (o) { beep(t + o, .4, [400, 450], .13); beep(t + o + .6, .4, [400, 450], .13) }) }
-            function pickup() { if (snd && ctx()) beep(ac.currentTime + .02, .09, [900], .12) }
-            function hang() { if (snd && ctx()) { var t = ac.currentTime + .05; beep(t, .14, [480], .12); beep(t + .24, .14, [480], .12) } }
+            function ctx() {
+                if (!ac) {
+                    var C = window.AudioContext || window.webkitAudioContext;
+                    if (C) {
+                        ac = new C();
+                        mg = ac.createGain();
+                        mg.gain.value = snd ? 1 : 0;
+                        mg.connect(ac.destination);
+                    }
+                }
+                if (ac && ac.state === 'suspended') {
+                    try { ac.resume() } catch (e) { }
+                }
+                return ac;
+            }
+            function beep(t0, dur, fr, vol) {
+                if (!ac || ac.state !== 'running') return;
+                var g = ac.createGain();
+                g.gain.setValueAtTime(vol || 0.12, t0);
+                g.gain.setValueAtTime(0, t0 + dur);
+                g.connect(mg);
+                fr.forEach(function (f) {
+                    var o = ac.createOscillator();
+                    o.type = 'sine';
+                    o.frequency.value = f;
+                    o.connect(g);
+                    o.start(t0);
+                    o.stop(t0 + dur);
+                });
+            }
+            function playRingtone() {
+                if (!snd) return;
+                try {
+                    if (!ringAudio) {
+                        ringAudio = new Audio();
+                        ringAudio.loop = true;
+                    }
+                    ringAudio.src = 'audio/ringtone.m4a';
+                    ringAudio.volume = 0.7;
+                    var p = ringAudio.play();
+                    if (p && p.catch) {
+                        p.catch(function () {
+                            ringAudio.src = 'audio/ringtone.wav';
+                            ringAudio.play().catch(function () {
+                                var c = ctx();
+                                if (c && c.state === 'running') {
+                                    var t = c.currentTime + 0.05;
+                                    beep(t, 0.4, [400, 450], 0.12);
+                                    beep(t + 0.6, 0.4, [400, 450], 0.12);
+                                }
+                            });
+                        });
+                    }
+                } catch (e) { }
+            }
+            function ringtone() { playRingtone(); }
+            function stopRingtone() {
+                if (ringAudio) {
+                    try { ringAudio.pause(); ringAudio.currentTime = 0; } catch (e) { }
+                }
+            }
+            function pickup() { stopRingtone(); if (snd && ctx()) beep(ac.currentTime + .02, .09, [900], .12) }
+            function hang() { stopRingtone(); stopCurAudio(); if (snd && ctx()) { var t = ac.currentTime + .05; beep(t, .14, [480], .12); beep(t + .24, .14, [480], .12) } }
             var sndBtn = document.getElementById('snd'), sndIco = document.getElementById('sndi'), ON = '<path d="M11 5L6 9H3v6h3l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/>', OFF = '<path d="M11 5L6 9H3v6h3l5 4z"/><path d="M22 9l-6 6M16 9l6 6"/>';
-            sndBtn.addEventListener('click', function () { snd = !snd; sndBtn.setAttribute('aria-pressed', snd); sndBtn.classList.toggle('off', !snd); sndBtn.title = snd ? 'Sound on' : 'Sound off'; sndBtn.setAttribute('aria-label', snd ? 'Sound on. Click to mute' : 'Sound off. Click to unmute'); sndIco.innerHTML = snd ? ON : OFF; if (mg) mg.gain.value = snd ? 1 : 0; if (!snd) { PL.pause(); if (window.speechSynthesis) speechSynthesis.cancel() } });
-            window.addEventListener('pagehide', function () { if (window.speechSynthesis) speechSynthesis.cancel() });
+            sndBtn.addEventListener('click', function () {
+                snd = !snd;
+                sndBtn.setAttribute('aria-pressed', snd);
+                sndBtn.classList.toggle('off', !snd);
+                sndBtn.title = snd ? 'Sound on' : 'Sound off';
+                sndBtn.setAttribute('aria-label', snd ? 'Sound on. Click to mute' : 'Sound off. Click to unmute');
+                sndIco.innerHTML = snd ? ON : OFF;
+                if (mg) mg.gain.value = snd ? 1 : 0;
+                if (!snd) {
+                    stopRingtone();
+                    stopCurAudio();
+                    if (window.speechSynthesis) speechSynthesis.cancel();
+                } else {
+                    ctx();
+                }
+            });
+            window.addEventListener('pagehide', function () { stopRingtone(); stopCurAudio(); if (window.speechSynthesis) speechSynthesis.cancel() });
 
             /* ===== personalised call: viewer enters a name, the agent addresses them respectfully ===== */
             /* Automatically connects to local tts_server.py on localhost, or Netlify Serverless Function in production */
@@ -3396,7 +3510,7 @@
                     ? 'http://127.0.0.1:8000/tts'
                     : '/api/tts'
             ) : '';
-            var TTS_WAIT = 10000; /* max ms to wait for the name audio (an open GPU model needs a few seconds per line) */
+            var TTS_WAIT = 3000; /* max ms to wait for dynamic voice so conversation never hangs */
             var cname = '', cgen = 'M', gtouch = false, fcm = false, PC = {}, formOn = false, warmed = false;
             var HON = {
                 en: { M: 'Mr. {n}', F: 'Ms. {n}' },
@@ -3453,7 +3567,41 @@
             }
             var FEMN = ' priya divya anitha anita sravani shravani lakshmi laxmi swathi swati sowmya soumya sneha pooja puja deepika deepa kavya kavitha kavita anjali anusha ananya aishwarya bhavana bhavani meena meera mounika monika harika harini haritha jyothi jyoti keerthi kirthi lavanya madhavi manasa nandini neha nikitha nikita padma pavani pallavi prathyusha pratyusha radha rajani ramya rekha renuka roja sandhya sangeetha sangeeta saritha sarita shilpa sirisha shirisha shreya shruthi shruti sita seetha sridevi sunitha sunita supriya swapna tejaswini vani varsha vasavi vidya vineela vinitha yamini uma usha geetha geeta gayathri gayatri durga bhargavi archana aparna amrutha amrita alekhya akhila ashwini bindu charitha chandana hema indu isha jahnavi kalyani kamala komali sushma sirivennela mamatha mamata manjula madhuri nirmala parvathi parvati ';
             function guessF(nm) { var w = nm.toLowerCase().split(' ')[0].replace(/[^a-z]/g, ''); if (!w) return false; return FEMN.indexOf(' ' + w + ' ') >= 0 || /(devi|rani|kumari|bai|priya|vathi|vati|mma|lakshmi|laxmi|jyothi)$/.test(w) }
-            function addrFor(L, nm) { var h = HON[L] || HON.en, t = typeof h === 'string' ? h : h[cgen]; return t.replace('{n}', nm) }
+            var PRE_GEN_ADDR = {
+                praveen: { en: 'Mr. Praveen', te: 'ప్రవీణ్ గారు', ta: 'பிரவீன் அவர்களே', ml: 'ശ്രീ പ്രവീൺ', gu: 'શ્રી પ્રવીણ', kn: 'ಪ್ರವೀಣ್ ಅವರೇ' },
+                rahul: { en: 'Mr. Rahul', te: 'రాహుల్ గారు', ta: 'ராகுல் அவர்களே', ml: 'ശ്രീ രാഹുൽ', gu: 'શ્રી રાહુલ', kn: 'ರಾಹುಲ್ ಅವರೇ' },
+                neha: { en: 'Ms. Neha', te: 'నేహా గారు', ta: 'நேஹா அவர்களே', ml: 'ശ്രീമതി നേഹ', gu: 'શ્રીમતી નેહા', kn: 'ನೇಹಾ ಅವರೇ' },
+                priya: { en: 'Ms. Priya', te: 'ప్రియ గారు', ta: 'பிரியா அவர்களே', ml: 'ശ്രീമതി പ്രിയ', gu: 'શ્રીમતી પ્રિયા', kn: 'ಪ್ರಿಯಾ ಅವರೇ' },
+                bhavana: { en: 'Ms. Bhavana', te: 'భావన గారు', ta: 'பாவனா அவர்களே', ml: 'ശ്രീമതി ഭാവന', gu: 'શ્રીમતી ભાવના', kn: 'ಭಾವನಾ ಅವರೇ' },
+                bhavani: { en: 'Ms. Bhavani', te: 'భవాని గారు', ta: 'பவானி அவர்களே', ml: 'ശ്രീമതി ഭവാനി', gu: 'શ્રીમતી ഭવાની', kn: 'ಭವಾನಿ ಅವರೇ' },
+                divya: { en: 'Ms. Divya', te: 'దివ్య గారు', ta: 'திவ்யா அவர்களே', ml: 'ശ്രീമതി ദിവ്യ', gu: 'શ્રીમતી દિવ્યા', kn: 'ದಿವ್ಯ ಅವರೇ' },
+                sneha: { en: 'Ms. Sneha', te: 'స్నేహ గారు', ta: 'ஸ்நேகா அவர்களே', ml: 'ശ്രീമതി സ്നേഹ', gu: 'શ્રીમતી സ്നേહા', kn: 'ಸ್ನೇಹ ಅವರೇ' },
+                kavya: { en: 'Ms. Kavya', te: 'కావ్య గారు', ta: 'காவ்யா அவர்களே', ml: 'ശ്രീമതി കാവ്യ', gu: 'શ્રીમતી કાવ્યા', kn: 'ಕಾವ್ಯ ಅವರೇ' },
+                anitha: { en: 'Ms. Anitha', te: 'అనిత గారు', ta: 'அனிதா அவர்களே', ml: 'ശ്രീമതി അനിത', gu: 'શ્રીમતી અનિતા', kn: 'ಅನಿತಾ ಅವರೇ' },
+                swathi: { en: 'Ms. Swathi', te: 'స్వాతి గారు', ta: 'சுவாதி அவர்களே', ml: 'ശ്രീമതി സ്വാതി', gu: 'શ્રીમતી സ്വാતિ', kn: 'ಸ್ವಾತಿ ಅವರೇ' },
+                deepika: { en: 'Ms. Deepika', te: 'దీపిక గారు', ta: 'தீபிகா அவர்களே', ml: 'ശ്രീമതി ദീപിക', gu: 'શ્રીમતી દીપિકા', kn: 'ದೀಪಿಕಾ ಅವರೇ' },
+                pooja: { en: 'Ms. Pooja', te: 'పూజా గారు', ta: 'பூஜா அவர்களே', ml: 'ശ്രീമതി പൂജ', gu: 'શ્રીમતી પૂજા', kn: 'ಪೂಜಾ ಅವರೇ' },
+                anjali: { en: 'Ms. Anjali', te: 'అంజలి గారు', ta: 'அஞ்சலி அவர்களே', ml: 'ശ്രീമതി അഞ്ജലി', gu: 'શ્રીમતી અંજલિ', kn: 'ಅಂಜಲಿ ಅವರೇ' },
+                meena: { en: 'Ms. Meena', te: 'మీనా గారు', ta: 'மீனா அவர்களே', ml: 'ശ്രീമതി മീന', gu: 'શ્રીમતી മീന', kn: 'ಮೀನಾ ಅವರೇ' },
+                suresh: { en: 'Mr. Suresh', te: 'సురేష్ గారు', ta: 'சுரேஷ் அவர்களே', ml: 'ശ്രീ സുരേഷ്', gu: 'શ્રી સુરેશ', kn: 'സുరೇಶ್ ಅವರೇ' },
+                ramesh: { en: 'Mr. Ramesh', te: 'రమేష్ గారు', ta: 'ரமேஷ் அவர்களே', ml: 'ശ്രീ രമേഷ്', gu: 'શ્રી ರಮേഷ്', kn: 'ರಮೇಶ್ ಅವರೇ' },
+                anil: { en: 'Mr. Anil', te: 'అనిల్ గారు', ta: 'அனில் அவர்களே', ml: 'ശ്രീ അനിൽ', gu: 'શ્રી અનિલ', kn: 'ಅನಿಲ್ ಅವರೇ' },
+                rajesh: { en: 'Mr. Rajesh', te: 'రాజేష్ గారు', ta: 'ராஜேஷ் அவர்களே', ml: 'ശ്രീ రాజేష్', gu: 'શ્રી રાજેશ', kn: 'ರಾಜೇಶ್ ಅವರೇ' },
+                vikram: { en: 'Mr. Vikram', te: 'విక్రమ్ గారు', ta: 'விக்ரம் அவர்களே', ml: 'ശ്രീ വിക്രം', gu: 'શ્રી વિક્રમ', kn: 'ವಿಕ್ರಮ್ ಅವರೇ' },
+                karthik: { en: 'Mr. Karthik', te: 'కార్తీక్ గారు', ta: 'கார்த்திக் அவர்களே', ml: 'ശ്രീ കാർത്തിക്', gu: 'શ્રી કાર્તિક', kn: 'ಕಾರ್ತಿಕ್ ಅವರೇ' }
+            };
+            function addrFor(L, nm) {
+                var raw = (nm || '').toLowerCase().replace(/[^a-z]/g, '');
+                if (raw === 'anita') raw = 'anitha';
+                if (raw === 'swati') raw = 'swathi';
+                if (raw === 'puja') raw = 'pooja';
+                if (PRE_GEN_ADDR[raw] && PRE_GEN_ADDR[raw][L]) {
+                    return PRE_GEN_ADDR[raw][L];
+                }
+                var h = HON[L] || HON.en, t = typeof h === 'string' ? h : (h[cgen] || h.M);
+                var scriptNm = (L === 'en') ? nm : (xlit(nm, L) || nm);
+                return t.replace('{n}', scriptNm);
+            }
             function inject(arr, a) {
                 return arr.map(function (t, i) {
                     if (i === 0) return t.replace(',', ' ' + a + ',');
@@ -3519,21 +3667,26 @@
                 }
             ];
             function personalize(base, L) {
-                var rz = REASONS[Math.floor(Math.random() * REASONS.length)];
+                var rz = REASONS[0];
                 var r = { lines: base.slice(), en: PE.slice(), idx: [], name: '', rec: '', reason: rz };
                 fcm = !!cname && cgen === 'F';
                 r.lines[3] = rz[L] || rz.en;
                 r.en[3] = rz.en;
-                if (rz.key !== 'salary_delayed') r.idx.push(3);
                 if (!cname) return r;
-                r.name = cname; r.rec = addrFor('en', cname);
-                r.lines = inject(r.lines, addrFor(L, xlit(cname, L)));
+                var raw = (cname || '').toLowerCase().replace(/[^a-z]/g, '');
+                if (raw === 'anita') raw = 'anitha';
+                if (raw === 'swati') raw = 'swathi';
+                if (raw === 'puja') raw = 'pooja';
+                r.name = cname;
+                r.rec = addrFor('en', cname);
+                var localizedAddr = addrFor(L, cname);
+                r.lines = inject(r.lines, localizedAddr);
                 r.en = inject(r.en, r.rec);
-                r.idx = [0, 4, 6];
-                if (rz.key !== 'salary_delayed') r.idx.push(3);
-                return r
+                if (PRE_NAMES.indexOf(raw) < 0) {
+                    r.idx = [0, 4, 6];
+                }
+                return r;
             }
-            /* the name lines can't be pre-recorded, so they are synthesised on demand (server) or spoken by the browser */
             /* spoken form of the text: EMI read letter by letter, money read naturally (same rules as generate_voices.py) */
             var EMIS = { en: 'E M I', ta: '\u0b88 \u0b8e\u0bae\u0bcd \u0b90', te: '\u0c08 \u0c0e\u0c02 \u0c10', ml: '\u0d08 \u0d0e\u0d02 \u0d10', gu: '\u0a88 \u0a8f\u0aae \u0a86\u0a88', kn: '\u0c88 \u0c8e\u0c82 \u0c90', 'or': '\u0b07 \u0b0f\u0b2e\u0b4d \u0b06\u0b07' };
             function ttsFix(l, t) { if (l === 'en') t = t.replace(/INR\s*([\d,]+)/g, '$1 rupees'); return t.replace(/EMI/g, EMIS[l] || 'E M I') }
@@ -3552,7 +3705,7 @@
             }
             function prefetchCustom(pz, L) {
                 PC = {};
-                if (!TTS_ENDPOINT || !snd) return;
+                if (!TTS_ENDPOINT || !snd || !pz.idx || !pz.idx.length) return;
                 pz.idx.forEach(function (k) {
                     var isAgent = (k % 2 === 0);
                     var role = isAgent ? 'agent' : 'customer';
@@ -3573,7 +3726,7 @@
                 pv.textContent = '';
                 if (!nm) { pv.textContent = 'Leave it blank for a generic greeting.'; return }
                 pv.appendChild(document.createTextNode('In ' + PNM[pcur] + ' the agent will say: '));
-                var b = document.createElement('b'); b.textContent = addrFor(pcur, xlit(nm, pcur)); pv.appendChild(b); pv.appendChild(document.createTextNode(' (customer voice: ' + (cgen === 'F' ? 'female' : 'male') + ')'))
+                var b = document.createElement('b'); b.textContent = addrFor(pcur, nm); pv.appendChild(b); pv.appendChild(document.createTextNode(' (customer voice: ' + (cgen === 'F' ? 'female' : 'male') + ')'))
             }
             function askName() {
                 if (running) return;
@@ -3598,12 +3751,32 @@
                     if (!en) d.transcript_english = tr(pz.en); d.recording_url = 'https://recordings.example.com/calls/' + d.id + '.wav';
                     jn.innerHTML = '<div class="plsc"><div class="plwho"><div class="plpp">' + AGI + '<small>Agent</small></div><div class="plwire"><i></i><i></i><i></i></div><div class="plpp ring" id="plcu">' + CUI + '<small>Customer</small></div></div><div class="plstt" id="plst">Agent is calling the customer...</div><div class="plcv" id="plcv"></div></div>';
                     var stt = document.getElementById('plst'), cv = document.getElementById('plcv'), cu = document.getElementById('plcu'), wr = jn.querySelector('.plwire'); if (pz.name) cu.querySelector('small').textContent = pz.name;
-                    if (snd) { ctx(); lv(); PL.muted = true; PL.src = SIL; var up = PL.play(); if (up && up.catch) up.catch(function () { }); if (window.speechSynthesis) { speechSynthesis.cancel(); speechSynthesis.speak(new SpeechSynthesisUtterance('')) } }
-                    var noted = false; preload(pcur, 8); prefetchCustom(pz, pcur); st(0, 'on', 1); st(0, 'vib', 1); ringtone(); await sleep(snd ? 3400 : 2300); if (snd && pz.idx.length && PC[0]) await Promise.race([PC[0], sleep(TTS_WAIT)]);
-                    stt.textContent = 'Customer picked up the phone'; pickup(); cu.classList.remove('ring'); wr.classList.add('live'); jn.querySelectorAll('.plpp').forEach(function (x) { x.classList.add('talk') }); st(1, 'on', 1); st(1, 'vib', 1); await sleep(900);
+                    if (snd) { ctx(); lv(); }
+                    var noted = false; preload(pcur, 8); prefetchCustom(pz, pcur); st(0, 'on', 1); st(0, 'vib', 1);
+                    playRingtone();
+                    await sleep(snd ? 2800 : 1800);
+                    stopRingtone();
+                    if (snd && pz.idx.length && PC[0]) await Promise.race([PC[0], sleep(TTS_WAIT)]);
+                    stt.textContent = 'Customer picked up the phone'; pickup(); cu.classList.remove('ring'); wr.classList.add('live'); jn.querySelectorAll('.plpp').forEach(function (x) { x.classList.add('talk') }); st(1, 'on', 1); st(1, 'vib', 1); await sleep(800);
                     stt.textContent = 'Conversation in progress (' + PNM[pcur] + ')...'; var pp = jn.querySelectorAll('.plpp');
-                    for (var k = 0; k < lines.length; k++) { var ag = k % 2 === 0, b = document.createElement('div'); b.className = 'plbb ' + (ag ? 'ag' : 'cu'); b.innerHTML = '<em></em>'; b.firstChild.textContent = ag ? 'Agent' : (pz.name || 'Customer'); b.appendChild(document.createTextNode(lines[k])); cv.appendChild(b); jn.scrollTop = jn.scrollHeight; pp[ag ? 0 : 1].classList.add('talk'); pp[ag ? 1 : 0].classList.remove('talk'); var sp = await say(lines[k], ag, pcur, k, pz.idx.indexOf(k) > -1); if (!sp && snd && !noted) { noted = true; stt.textContent = 'Conversation in progress (' + PNM[pcur] + '), captions only: no voice for this language yet.' } await sleep(sp ? 340 + Math.random() * 260 : 1400) }
-                    hang(); stt.textContent = 'Call ended, 00:' + ('0' + (lines.length * 4 + 3)).slice(-2); wr.classList.remove('live'); jn.querySelectorAll('.plpp').forEach(function (x) { x.classList.remove('talk') }); fin(0); fin(1); await sleep(1100);
+                    for (var k = 0; k < lines.length; k++) {
+                        var ag = k % 2 === 0, b = document.createElement('div');
+                        b.className = 'plbb ' + (ag ? 'ag' : 'cu');
+                        b.innerHTML = '<em></em>';
+                        b.firstChild.textContent = ag ? 'Agent' : (pz.name || 'Customer');
+                        b.appendChild(document.createTextNode(lines[k]));
+                        cv.appendChild(b);
+                        jn.scrollTop = jn.scrollHeight;
+                        pp[ag ? 0 : 1].classList.add('talk');
+                        pp[ag ? 1 : 0].classList.remove('talk');
+                        var sp = await say(lines[k], ag, pcur, k, pz.idx.indexOf(k) > -1);
+                        if (!sp && snd && !noted) {
+                            noted = true;
+                            stt.textContent = 'Conversation in progress (' + PNM[pcur] + '), captions only: no voice for this language yet.';
+                        }
+                        await sleep(sp ? 340 + Math.random() * 200 : 1200);
+                    }
+                    hang(); stt.textContent = 'Call ended, 00:' + ('0' + (lines.length * 4 + 3)).slice(-2); wr.classList.remove('live'); jn.querySelectorAll('.plpp').forEach(function (x) { x.classList.remove('talk') }); fin(0); fin(1); await sleep(1000);
                     st(2, 'on', 1); st(2, 'vib', 1); jn.innerHTML = '<div class="plsc"><div class="plstt"><span class="plspin"></span>LLM is processing the call...</div><ul class="plex" id="plex"></ul><div class="pltr" id="pltr"></div></div>';
                     var ex = document.getElementById('plex'), tb = document.getElementById('pltr'), F = [['language', d.language], ['intent', d.intent], ['sentiment', d.sentiment], ['callback_requested', d.callback_requested], ['reason_for_non_payment', d.reason_for_non_payment], ['summary', 'generated']];
                     for (var j = 0; j < F.length; j++) { var li = document.createElement('li'); li.innerHTML = '<b>&#10003;</b>'; li.appendChild(document.createTextNode(F[j][0] + ': ' + F[j][1])); ex.appendChild(li); await sleep(380) }
