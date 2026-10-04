@@ -3397,8 +3397,12 @@
             window.addEventListener('pagehide', function () { if (window.speechSynthesis) speechSynthesis.cancel() });
 
             /* ===== personalised call: viewer enters a name, the agent addresses them respectfully ===== */
-            /* Automatically connects to local tts_server.py when running locally, or a remote GPU endpoint */
-            var TTS_ENDPOINT = (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.protocol === 'file:')) ? 'http://127.0.0.1:8000/tts' : '';
+            /* Automatically connects to local tts_server.py on localhost, or Netlify Serverless Function in production */
+            var TTS_ENDPOINT = (typeof window !== 'undefined') ? (
+                (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.protocol === 'file:')
+                    ? 'http://127.0.0.1:8000/tts'
+                    : '/api/tts'
+            ) : '';
             var TTS_WAIT = 10000; /* max ms to wait for the name audio (an open GPU model needs a few seconds per line) */
             var cname = '', cgen = 'M', gtouch = false, fcm = false, PC = {}, formOn = false, warmed = false;
             var HON = {
