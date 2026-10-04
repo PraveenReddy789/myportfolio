@@ -3334,7 +3334,21 @@
             function pickV(l) { var m = vcs.filter(function (v) { return v.lang.replace('_', '-').toLowerCase().indexOf(LC[l]) === 0 }); if (l === 'en') { var ei = m.filter(function (v) { return /en-in/i.test(v.lang.replace('_', '-')) }); if (ei.length) m = ei } return m }
             function isF(v) { return /female|woman|heera|heena|veena|neerja|swara|lekha|priya|kalpana|aditi|raveena|zira|samantha|karen|tessa|kyoko|shruti|pallavi|sangeeta/i.test(v.name) }
             var PL = new Audio(), AUD = [], CF = {}, SIL = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=';
-            function clipSrc(l, k) { return 'audio/' + l + (fcm ? '/fc/' : '/') + k + '.mp3' }
+            var PRE_NAMES = [
+                'neha', 'priya', 'bhavana', 'bhavani', 'divya', 'sneha', 'kavya', 'anitha', 'anita',
+                'swathi', 'swati', 'deepika', 'pooja', 'puja', 'anjali', 'meena',
+                'praveen', 'rahul', 'suresh', 'ramesh', 'anil', 'rajesh', 'vikram', 'karthik'
+            ];
+            function clipSrc(l, k) {
+                var raw = (cname || '').toLowerCase().replace(/[^a-z]/g, '');
+                if (raw === 'anita') raw = 'anitha';
+                if (raw === 'swati') raw = 'swathi';
+                if (raw === 'puja') raw = 'pooja';
+                if (PRE_NAMES.indexOf(raw) >= 0 && (k === 0 || k === 4 || k === 6)) {
+                    return 'audio/' + l + '/names/' + raw + '/' + k + '.mp3';
+                }
+                return 'audio/' + l + (fcm ? '/fc/' : '/') + k + '.mp3';
+            }
             function preload(l, n) { if (CF[l + (fcm ? 'f' : '')]) return; for (var k = 0; k < n; k++) { var a = new Audio(); a.preload = 'auto'; a.src = clipSrc(l, k); AUD.push(a) } }
             function playClip(l, k) { return playSrc(clipSrc(l, k)) }
             function playSrc(src) {

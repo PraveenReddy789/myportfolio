@@ -174,6 +174,82 @@ async def synth(sem, lang, i, text, voice, role, sub=""):
     return False
 
 
+PRE_GEN_NAMES = {
+    "neha": ("F", {
+        "en": "Ms. Neha", "te": "నేహా గారు", "ta": "நேஹா அவர்களே", "ml": "ശ്രീമതി നേഹ", "gu": "શ્રીમતી નેહા", "kn": "ನೇಹಾ ಅವರೇ"
+    }),
+    "priya": ("F", {
+        "en": "Ms. Priya", "te": "ప్రియ గారు", "ta": "பிரியா அவர்களே", "ml": "ശ്രീമതി പ്രിയ", "gu": "શ્રીમતી પ્રિયા", "kn": "ಪ್ರಿಯಾ ಅವರೇ"
+    }),
+    "bhavana": ("F", {
+        "en": "Ms. Bhavana", "te": "భావన గారు", "ta": "பாவனா அவர்களே", "ml": "ശ്രീമതി ഭാവന", "gu": "શ્રીમતી ભાવના", "kn": "ಭಾವನಾ ಅವರೇ"
+    }),
+    "bhavani": ("F", {
+        "en": "Ms. Bhavani", "te": "భవాని గారు", "ta": "பவானி அவர்களே", "ml": "ശ്രീമതി ഭവാനി", "gu": "શ્રીમતી ભવાની", "kn": "ಭವಾನಿ ಅವರೇ"
+    }),
+    "divya": ("F", {
+        "en": "Ms. Divya", "te": "దివ్య గారు", "ta": "திவ்யா அவர்களே", "ml": "ശ്രീമതി ദിവ്യ", "gu": "શ્રીમતી દિવ્યા", "kn": "ದಿವ್ಯ ಅವರೇ"
+    }),
+    "sneha": ("F", {
+        "en": "Ms. Sneha", "te": "స్నేహ గారు", "ta": "ஸ்நேகா அவர்களே", "ml": "ശ്രീമതി സ്നേഹ", "gu": "શ્રીમતી સ્નેહા", "kn": "ಸ್ನೇಹ ಅವರೇ"
+    }),
+    "kavya": ("F", {
+        "en": "Ms. Kavya", "te": "కావ్య గారు", "ta": "காவ்யா அவர்களே", "ml": "ശ്രീമതി കാവ്യ", "gu": "શ્રીમતી કાવ્યા", "kn": "ಕಾವ್ಯ ಅವರೇ"
+    }),
+    "anitha": ("F", {
+        "en": "Ms. Anitha", "te": "అనిత గారు", "ta": "அனிதா அவர்களே", "ml": "ശ്രീമതി അനിത", "gu": "શ્રીમતી અનિતા", "kn": "ಅನಿತಾ ಅವರೇ"
+    }),
+    "swathi": ("F", {
+        "en": "Ms. Swathi", "te": "స్వాతి గారు", "ta": "சுவாதி அவர்களே", "ml": "ശ്രീമതി സ്വാതി", "gu": "શ્રીમતી સ્વાતિ", "kn": "ಸ್ವಾತಿ ಅವರೇ"
+    }),
+    "deepika": ("F", {
+        "en": "Ms. Deepika", "te": "దీపిక గారు", "ta": "தீபிகா அவர்களே", "ml": "ശ്രീമതി ദീപിക", "gu": "શ્રીમતી દીપિકા", "kn": "ದೀಪಿಕಾ ಅವರೇ"
+    }),
+    "pooja": ("F", {
+        "en": "Ms. Pooja", "te": "పూజా గారు", "ta": "பூஜா அவர்களே", "ml": "ശ്രീമതി പൂജ", "gu": "શ્રીમતી પૂજા", "kn": "ಪೂಜಾ ಅವರೇ"
+    }),
+    "anjali": ("F", {
+        "en": "Ms. Anjali", "te": "అంజలి గారు", "ta": "அஞ்சலி அவர்களே", "ml": "ശ്രീമതി അഞ്ജലി", "gu": "શ્રીમતી અંજલિ", "kn": "ಅಂಜಲಿ ಅವರೇ"
+    }),
+    "meena": ("F", {
+        "en": "Ms. Meena", "te": "మీనా గారు", "ta": "மீனா அவர்களே", "ml": "ശ്രീമതി മീന", "gu": "શ્રીમતી മീന", "kn": "ಮೀನಾ ಅವರೇ"
+    }),
+    "praveen": ("M", {
+        "en": "Mr. Praveen", "te": "ప్రవీణ్ గారు", "ta": "பிரவீன் அவர்களே", "ml": "ശ്രീ പ്രവീൺ", "gu": "શ્રી પ્રવીણ", "kn": "ಪ್ರವೀಣ್ ಅವರೇ"
+    }),
+    "rahul": ("M", {
+        "en": "Mr. Rahul", "te": "రాహుల్ గారు", "ta": "ராகுல் அவர்களே", "ml": "ശ്രീ രാഹുൽ", "gu": "શ્રી રાહુલ", "kn": "ರಾಹುಲ್ ಅವರೇ"
+    }),
+    "suresh": ("M", {
+        "en": "Mr. Suresh", "te": "సురేష్ గారు", "ta": "சுரேஷ் அவர்களே", "ml": "ശ്രീ സുരേഷ്", "gu": "શ્રી સુરેશ", "kn": "ಸುರೇಶ್ ಅವರೇ"
+    }),
+    "ramesh": ("M", {
+        "en": "Mr. Ramesh", "te": "రమేష్ గారు", "ta": "ரமேஷ் அவர்களே", "ml": "ശ്രീ രമേഷ്", "gu": "શ્રી રમેશ", "kn": "ರಮೇಶ್ ಅವರೇ"
+    }),
+    "anil": ("M", {
+        "en": "Mr. Anil", "te": "అనిల్ గారు", "ta": "அனில் அவர்களே", "ml": "శ്രീ అനിൽ", "gu": "શ્રી અનિલ", "kn": "ಅನಿಲ್ ಅವರೇ"
+    }),
+    "rajesh": ("M", {
+        "en": "Mr. Rajesh", "te": "రాజేష్ గారు", "ta": "ராஜேஷ் அவர்களே", "ml": "ശ്രീ രാജേഷ്", "gu": "શ્રી રાજેશ", "kn": "ರಾಜೇಶ್ ಅವರೇ"
+    }),
+    "vikram": ("M", {
+        "en": "Mr. Vikram", "te": "విక్రమ్ గారు", "ta": "விக்ரம் அவர்களே", "ml": "ശ്രീ വിക്രം", "gu": "શ્રી વિક્રમ", "kn": "ವಿಕ್ರಮ್ ಅವರೇ"
+    }),
+    "karthik": ("M", {
+        "en": "Mr. Karthik", "te": "కార్తీక్ గారు", "ta": "கார்த்திக் அவர்களே", "ml": "ശ്രീ കാർത്തിക്", "gu": "શ્રી કાર્તિક", "kn": "ಕಾರ್ತಿಕ್ ಅವರೇ"
+    }),
+}
+
+def inject_name(text, lang, name_addr, line_idx):
+    if line_idx == 0:
+        return text.replace(",", f" {name_addr},", 1)
+    if line_idx in (4, 6):
+        if "." in text:
+            return text.replace(".", f", {name_addr}.", 1)
+        if "।" in text:
+            return text.replace("।", f", {name_addr}।", 1)
+    return text
+
 async def main(langs):
     if edge_tts is None:
         sys.exit("edge-tts is not installed (pip install edge-tts). For the Hugging Face voices use generate_voices_hf.py")
@@ -196,6 +272,18 @@ async def main(langs):
             jobs.append(synth(sem, lang, i, text, agent if role == "agent" else cust, role))
             # swapped set for a female customer: male agent, female customer
             jobs.append(synth(sem, lang, i, text, cust if role == "agent" else agent, role, "fc"))
+
+        # Pre-render common demo names so they are 100% human neural voice with 0 lag
+        for name_key, (gender, name_map) in PRE_GEN_NAMES.items():
+            if lang not in name_map:
+                continue
+            name_addr = name_map[lang]
+            # Agent voice: if customer is female, agent is male (cust); if customer is male, agent is female (agent)
+            agent_voice = cust if gender == "F" else agent
+            for i in [0, 4, 6]:
+                line_text = inject_name(LINES[lang][i], lang, name_addr, i)
+                jobs.append(synth(sem, lang, i, line_text, agent_voice, "agent", f"names/{name_key}"))
+
     res = await asyncio.gather(*jobs)
     print(f"\nDone: {sum(res)}/{len(res)} clips in {OUT}")
 
