@@ -3638,7 +3638,17 @@
                 },
                 {
                     key: 'banking_technical_issue',
-                    summary: 'Customer experienced banking UPI technical failure during prev            var callMode = 'interactive'; /* 'interactive' (Live Mic Talk as Customer) or 'auto' (Scripted Simulation) */
+                    summary: 'Customer experienced banking UPI technical failure during previous payment attempt and committed to retry and clear full INR 12,500 by 7 October.',
+                    en: 'Yes, my UPI payment failed due to server error.',
+                    te: 'అవును, బ్యాంక్ సర్వర్ సమస్య వల్ల UPI పేమెంట్ ఫెయిల్ అయింది.',
+                    ta: 'ஆமாம், வங்கி சர்வர் கோளாறு காரணமாக UPI பணம் செலுத்த முடியவில்லை.',
+                    ml: 'അതെ, ബാങ്ക് സെർവർ തകരാർ കാരണം UPI പരാജയപ്പെട്ടു.',
+                    gu: 'હા, બેંક સર્વર સમસ્યાને કારણે UPI નિષ્ફળ ગયું.',
+                    kn: 'ಹೌದು, ಬ್ಯಾಂಕ್ ಸರ್ವರ್ ದೋಷದಿಂದಾಗಿ UPI ವಿಫಲವಾಯಿತು.',
+                    'or': 'ହଁ, ବ୍ୟାଙ୍କ ସର୍ଭର ତ୍ରୁଟି ଯୋଗୁଁ UPI ବିଫଳ ହେଲା।'
+                }
+            ];
+            var callMode = 'interactive'; /* 'interactive' (Live Mic Talk as Customer) or 'auto' (Scripted Simulation) */
             var REC_LANGS = { en: 'en-IN', te: 'te-IN', ta: 'ta-IN', ml: 'ml-IN', gu: 'gu-IN', kn: 'kn-IN', 'or': 'or-IN' };
             var INTENTS = {
                 en: {
@@ -3897,6 +3907,7 @@
                     vw.addEventListener('click', function (e) { var bt = e.target.closest('button'); if (!bt) return; var v = bt.dataset.v; if (v === 'd') { dl(); return } vw.querySelectorAll('button').forEach(function (x) { x.classList.toggle('on', x === bt) }); if (v === 'b') showD(false); else if (v === 'j') showJ(); else showC() });
                     showD(true)
                 } finally { ib.disabled = false; running = false; pl.querySelectorAll('button').forEach(function (x) { x.disabled = false }) }
+            }
             ib.addEventListener('click', askName); pidle();
             /* text-to-sql demo */
             var Q = [{ sql: "SELECT COUNT(*) AS calls\nFROM calls\nWHERE intent = 'promise_to_pay'\n  AND call_date >= date_trunc('week', now());", h: ['calls'], r: [['1,284']] },
