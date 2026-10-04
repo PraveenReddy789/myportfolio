@@ -3344,7 +3344,26 @@
                     a.muted = false; a.src = src; var pr = a.play(); if (pr && pr.catch) pr.catch(function () { f(false) }); tm = setTimeout(function () { f(false); a.pause() }, 15000)
                 })
             }
-            async function say(t, ag, l, k, pers) { if (!snd) return false; if (pers) { var okp = await playCustom(k); if (okp) return true; if (!snd) return false; if (TTS_ENDPOINT) { var okg = await playClip(l, k); if (okg) return true; if (!snd) return false } return sayTTS(t, ag, l) } var ck = l + (fcm ? 'f' : ''); if (!CF[ck]) { var ok = await playClip(l, k); if (ok) return true; if (!snd) return false; CF[ck] = true } return sayTTS(t, ag, l) }
+            async function say(t, ag, l, k, pers) {
+                if (!snd) return false;
+                if (pers) {
+                    var okp = await playCustom(k);
+                    if (okp) return true;
+                    if (!snd) return false;
+                    var okg = await playClip(l, k);
+                    if (okg) return true;
+                    if (!snd) return false;
+                    return sayTTS(t, ag, l);
+                }
+                var ck = l + (fcm ? 'f' : '');
+                if (!CF[ck]) {
+                    var ok = await playClip(l, k);
+                    if (ok) return true;
+                    if (!snd) return false;
+                    CF[ck] = true;
+                }
+                return sayTTS(t, ag, l);
+            }
             function sayTTS(t, ag, l) {
                 return new Promise(function (res) {
                     var m = pickV(l).sort(function (x, y) { return natScore(y) - natScore(x) }); if (!snd || !window.speechSynthesis || !m.length) { res(false); return } console.warn('Samvaad demo: browser voice used for a line (' + l + '); the Edge neural clip was not available');
@@ -3364,9 +3383,8 @@
             window.addEventListener('pagehide', function () { if (window.speechSynthesis) speechSynthesis.cancel() });
 
             /* ===== personalised call: viewer enters a name, the agent addresses them respectfully ===== */
-            /* To get a natural neural voice for the name lines, host tts_server.py and put its URL here,
-               e.g. 'https://your-host.example.com/tts'. Left empty, the name lines use the browser voice. */
-            var TTS_ENDPOINT = '';
+            /* Automatically connects to local tts_server.py when running locally, or a remote GPU endpoint */
+            var TTS_ENDPOINT = (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.protocol === 'file:')) ? 'http://127.0.0.1:8000/tts' : '';
             var TTS_WAIT = 10000; /* max ms to wait for the name audio (an open GPU model needs a few seconds per line) */
             var cname = '', cgen = 'M', gtouch = false, fcm = false, PC = {}, formOn = false, warmed = false;
             var HON = {
