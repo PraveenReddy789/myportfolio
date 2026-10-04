@@ -3788,6 +3788,19 @@
                 var u = await Promise.race([PC[k], sleep(TTS_WAIT).then(function () { return null })]);
                 return u ? playSrc(u) : false
             }
+            async function speakDynamic(t, ag, l) {
+                if (!snd) return false;
+                if (TTS_ENDPOINT) {
+                    var role = ag ? 'agent' : 'customer';
+                    var u = TTS_ENDPOINT + (TTS_ENDPOINT.indexOf('?') < 0 ? '?' : '&') + 'lang=' + l + '&role=' + role + '&alt=' + (fcm ? 1 : 0) + '&text=' + encodeURIComponent(t);
+                    var blobUrl = await fetchTTS(u);
+                    if (blobUrl) {
+                        var ok = await playSrc(blobUrl);
+                        if (ok) return true;
+                    }
+                }
+                return sayTTS(t, ag, l);
+            }
             function updPv() {
                 var pv = document.getElementById('plpv'), gn = document.getElementById('plgn'), inp = document.getElementById('plnmi');
                 if (!formOn || !pv || !inp) return;
@@ -3814,7 +3827,18 @@
                 md.addEventListener('click', function (e) { var b = e.target.closest('button'); if (!b) return; callMode = b.dataset.m; mark(); f.querySelector('.go').textContent = callMode === 'interactive' ? 'Start Live Call' : 'Start Auto Demo' });
                 inp.addEventListener('input', function () { if (!gtouch) { cgen = guessF(cleanName(inp.value)) ? 'F' : 'M'; mark() } updPv() });
                 gn.addEventListener('click', function (e) { var b = e.target.closest('button'); if (!b) return; gtouch = true; cgen = b.dataset.g; mark(); updPv() });
-                function go(skip) { cname = skip ? '' : cleanName(inp.value); formOn = false; run() }
+                function go(skip) {
+                    cname = skip ? '' : cleanName(inp.value);
+                    formOn = false;
+                    if (callMode === 'interactive' && navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                        try {
+                            navigator.mediaDevices.getUserMedia({ audio: true }).then(function (stream) {
+                                stream.getTracks().forEach(function (t) { t.stop() });
+                            }).catch(function () { });
+                        } catch (e) { }
+                    }
+                    run();
+                }
                 f.addEventListener('submit', function (e) { e.preventDefault(); go(false) });
                 document.getElementById('plskip').addEventListener('click', function () { go(true) });
                 try { inp.focus({ preventScroll: true }) } catch (e) { }
@@ -3838,12 +3862,12 @@
                         var agLine0 = lines[0] + ' ' + (pcur === 'en' ? 'Your EMI of INR 12,500 was due on 20 September. When can you make the payment?' : (pcur === 'te' ? 'మీ ₹12,500 EMI సెప్టెంబర్ 20 న చెల్లించాల్సి ఉంది. ఎప్పుడు చెల్లించగలరు?' : lines[2] + ' ' + lines[4]));
                         var b0 = document.createElement('div'); b0.className = 'plbb ag'; b0.innerHTML = '<em>Agent</em>'; b0.appendChild(document.createTextNode(agLine0)); cv.appendChild(b0); jn.scrollTop = jn.scrollHeight;
                         pp[0].classList.add('talk'); pp[1].classList.remove('talk');
-                        await say(agLine0, true, pcur, 0, true);
+                        await speakDynamic(agLine0, true, pcur);
                         pp[0].classList.remove('talk');
                         dialogueTranscript.push('Agent: ' + agLine0);
 
                         /* ---- Live Customer Speaking Turn (Microphone / Chips) ---- */
-                        stt.textContent = '🎙️ Your Turn to Speak as Customer...';
+                        stt.textContent = '🔴 Listening... Speak into your mic or select an option';
                         pp[1].classList.add('talk');
                         var cfg = INTENTS[pcur] || INTENTS.en;
                         var chipHtml = cfg.chips.map(function (c) { return '<button type="button" class="plchip" data-t="' + c.text.replace(/"/g, '&quot;') + '">' + c.label + '</button>' }).join('');
@@ -3867,29 +3891,68 @@
 
                             var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
                             if (SR) {
-                                recognition = new SR();
-                                recognition.lang = REC_LANGS[pcur] || 'en-IN';
-                                recognition.interimResults = true;
-                                recognition.continuous = false;
+                                try {
+                                    recognition = new SR();
+                                    recognition.lang = REC_LANGS[pcur] || 'en-IN';
+                                    recognition.interimResults = true;
+                                    recognition.continuous = false;
+                                    recognition.maxAlternatives = 1;
 
-                                recognition.onstart = function () { recognizing = true; micBtn.classList.remove('off'); micBtn.textContent = '🔴' };
-                                recognition.onresult = function (event) {
-                                    var str = '';
-                                    for (var i = event.resultIndex; i < event.results.length; ++i) { str += event.results[i][0].transcript }
-                                    micInp.value = str;
-                                };
-                                recognition.onerror = function () { recognizing = false; micBtn.classList.add('off'); micBtn.textContent = '🎙️' };
-                                recognition.onend = function () {
-                                    recognizing = false; micBtn.classList.add('off'); micBtn.textContent = '🎙️';
-                                    if (micInp.value.trim().length > 2) {
-                                        setTimeout(function () { if (mw.innerHTML) submitText(micInp.value) }, 900);
+                                    function startRec() {
+                                        try {
+                                            recognition.start();
+                                            recognizing = true;
+                                            micBtn.classList.remove('off');
+                                            micBtn.textContent = '🔴';
+                                            stt.textContent = '🔴 Listening... Speak into your mic now';
+                                        } catch (err) { }
                                     }
-                                };
-                                micBtn.addEventListener('click', function () {
-                                    if (recognizing) { try { recognition.stop() } catch (e) { } }
-                                    else { try { recognition.start() } catch (e) { } }
-                                });
-                                try { recognition.start() } catch (e) { }
+
+                                    recognition.onstart = function () {
+                                        recognizing = true;
+                                        micBtn.classList.remove('off');
+                                        micBtn.textContent = '🔴';
+                                        stt.textContent = '🔴 Listening... Speak into your mic now';
+                                    };
+                                    recognition.onresult = function (event) {
+                                        var str = '';
+                                        for (var i = event.resultIndex; i < event.results.length; ++i) {
+                                            str += event.results[i][0].transcript;
+                                        }
+                                        if (str) {
+                                            micInp.value = str;
+                                            stt.textContent = '🎙️ Heard: "' + str + '"';
+                                        }
+                                    };
+                                    recognition.onerror = function (err) {
+                                        recognizing = false;
+                                        micBtn.classList.add('off');
+                                        micBtn.textContent = '🎙️';
+                                        if (err && err.error === 'not-allowed') {
+                                            stt.textContent = '⚠️ Mic access denied. Click 🎙️ to retry, type, or click a chip.';
+                                        }
+                                    };
+                                    recognition.onend = function () {
+                                        recognizing = false;
+                                        micBtn.classList.add('off');
+                                        micBtn.textContent = '🎙️';
+                                        if (micInp.value.trim().length > 1) {
+                                            setTimeout(function () {
+                                                if (mw.innerHTML) submitText(micInp.value);
+                                            }, 700);
+                                        }
+                                    };
+                                    micBtn.addEventListener('click', function () {
+                                        if (recognizing) {
+                                            try { recognition.stop() } catch (e) { }
+                                        } else {
+                                            startRec();
+                                        }
+                                    });
+                                    startRec();
+                                } catch (e) {
+                                    console.warn('SpeechRecognition init:', e);
+                                }
                             } else {
                                 micBtn.classList.add('off');
                                 micInp.placeholder = 'SpeechRecognition unavailable. Type or click a chip below:';
@@ -3910,7 +3973,7 @@
                         stt.textContent = 'Agent responding...';
                         var bResp = document.createElement('div'); bResp.className = 'plbb ag'; bResp.innerHTML = '<em>Agent</em>'; bResp.appendChild(document.createTextNode(agReply)); cv.appendChild(bResp); jn.scrollTop = jn.scrollHeight;
                         pp[0].classList.add('talk');
-                        await say(agReply, true, pcur, 6, true);
+                        await speakDynamic(agReply, true, pcur);
                         pp[0].classList.remove('talk');
                         dialogueTranscript.push('Agent: ' + agReply);
 
