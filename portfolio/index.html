@@ -1639,129 +1639,6 @@
             color: #ffb184
         }
 
-        /* Interactive Customer Voice & Mic Styles */
-        .plmode {
-            display: flex;
-            gap: 8px;
-            justify-content: center;
-            margin-bottom: 6px;
-            width: 100%;
-        }
-
-        .plmode button {
-            font: 600 12.5px var(--bd);
-            padding: 6px 14px;
-            border-radius: 99px;
-            border: 1.5px solid rgba(128, 128, 128, .4);
-            background: transparent;
-            color: inherit;
-            cursor: pointer;
-            transition: .18s;
-        }
-
-        .plmode button.on {
-            background: var(--accent);
-            border-color: var(--accent);
-            color: #fff;
-        }
-
-        .plmic-box {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-            padding: 10px;
-            background: rgba(18, 22, 34, .92);
-            border-radius: 14px;
-            margin-top: 8px;
-            border: 1px solid rgba(255, 255, 255, .15);
-            box-shadow: 0 8px 24px rgba(0, 0, 0, .45);
-        }
-
-        .plmic-row {
-            display: flex;
-            gap: 8px;
-            align-items: center;
-        }
-
-        .plmic-rec {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            border: none;
-            background: #ef4444;
-            color: #fff;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            font-size: 17px;
-            box-shadow: 0 0 0 0 rgba(239, 68, 68, .7);
-            animation: plpulse 1.4s infinite;
-            flex-shrink: 0;
-            transition: .2s;
-        }
-
-        .plmic-rec.off {
-            background: rgba(255, 255, 255, .16);
-            animation: none;
-        }
-
-        @keyframes plpulse {
-            0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, .7); }
-            70% { box-shadow: 0 0 0 12px rgba(239, 68, 68, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
-        }
-
-        .plmic-inp {
-            flex: 1;
-            background: rgba(255, 255, 255, .08);
-            border: 1px solid rgba(255, 255, 255, .2);
-            color: #fff;
-            border-radius: 10px;
-            padding: 8px 12px;
-            font: 500 13.5px var(--bd);
-            outline: none;
-        }
-
-        .plmic-inp:focus {
-            border-color: var(--accent);
-        }
-
-        .plmic-send {
-            background: var(--accent);
-            color: #fff;
-            border: none;
-            border-radius: 10px;
-            padding: 8px 14px;
-            font: 600 13px var(--bd);
-            cursor: pointer;
-            flex-shrink: 0;
-        }
-
-        .plchips {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 6px;
-            max-height: 90px;
-            overflow-y: auto;
-        }
-
-        .plchip {
-            background: rgba(255, 255, 255, .08);
-            border: 1px solid rgba(255, 255, 255, .16);
-            color: inherit;
-            font: 500 11.5px var(--bd);
-            padding: 5px 10px;
-            border-radius: 99px;
-            cursor: pointer;
-            transition: .15s;
-        }
-
-        .plchip:hover {
-            background: rgba(242, 106, 33, .25);
-            border-color: var(--accent);
-        }
-
         .pllg {
             display: flex;
             flex-wrap: wrap;
@@ -3473,42 +3350,13 @@
                 return 'audio/' + l + (fcm ? '/fc/' : '/') + k + '.mp3';
             }
             function preload(l, n) { if (CF[l + (fcm ? 'f' : '')]) return; for (var k = 0; k < n; k++) { var a = new Audio(); a.preload = 'auto'; a.src = clipSrc(l, k); AUD.push(a) } }
-            var curAudio = null;
-            function stopCurAudio() {
-                if (curAudio) {
-                    try {
-                        curAudio.pause();
-                        curAudio.src = '';
-                        curAudio.onended = null;
-                        curAudio.onerror = null;
-                        curAudio.onpause = null;
-                    } catch (e) { }
-                    curAudio = null;
-                }
-            }
             function playClip(l, k) { return playSrc(clipSrc(l, k)) }
             function playSrc(src) {
                 return new Promise(function (res) {
-                    stopCurAudio();
-                    var a = new Audio();
-                    curAudio = a;
-                    var done = false, tm;
-                    function f(ok) {
-                        if (done) return;
-                        done = true;
-                        clearTimeout(tm);
-                        a.onended = a.onerror = null;
-                        if (curAudio === a) curAudio = null;
-                        res(ok);
-                    }
-                    a.onended = function () { f(true) };
-                    a.onerror = function () { f(false) };
-                    a.muted = false;
-                    a.src = src;
-                    var pr = a.play();
-                    if (pr && pr.catch) pr.catch(function () { f(false) });
-                    tm = setTimeout(function () { f(true); try { a.pause(); } catch (e) { } }, 20000);
-                });
+                    var a = PL, done = false, tm; function f(ok) { if (done) return; done = true; clearTimeout(tm); a.onended = a.onerror = a.onpause = null; res(ok) }
+                    a.onended = function () { f(true) }; a.onerror = function () { f(false) }; a.onpause = function () { f(true) };
+                    a.muted = false; a.src = src; var pr = a.play(); if (pr && pr.catch) pr.catch(function () { f(false) }); tm = setTimeout(function () { f(false); a.pause() }, 15000)
+                })
             }
             async function say(t, ag, l, k, pers) {
                 if (!snd) return false;
@@ -3660,136 +3508,16 @@
                 },
                 {
                     key: 'banking_technical_issue',
-                    summary: 'Customer experienced banking UPI technical failure during previous payment attempt and committed to retry and clear full INR 12,500 by 7 October.',
-                    en: 'Yes, my UPI payment failed due to server error.',
-                    te: 'అవును, బ్యాంక్ సర్వర్ సమస్య వల్ల UPI పేమెంట్ ఫెయిల్ అయింది.',
-                    ta: 'ஆமாம், வங்கி சர்வர் கோளாறு காரணமாக UPI பணம் செலுத்த முடியவில்லை.',
-                    ml: 'അതെ, ബാങ്ക് സെർവർ തകരാർ കാരണം UPI പരാജയപ്പെട്ടു.',
-                    gu: 'હા, બેંક સર્વર સમસ્યાને કારણે UPI નિષ્ફળ ગયું.',
-                    kn: 'ಹೌದು, ಬ್ಯಾಂಕ್ ಸರ್ವರ್ ದೋಷದಿಂದಾಗಿ UPI ವಿಫಲವಾಯಿತು.',
-                    'or': 'ହଁ, ବ୍ୟାଙ୍କ ସର୍ଭର ତ୍ରୁଟି ଯୋଗୁଁ UPI ବିଫଳ ହେଲା।'
+                    summary: 'Customer experienced banking UPI technical failure during previous attempt and scheduled repayment for 7 October.',
+                    en: 'Yes, my UPI transaction failed last week due to a bank server error.',
+                    te: 'అవును, గత వారం బ్యాంక్ సర్వర్ సమస్య వల్ల యూపీఐ పేమెంట్ ఫెయిల్ అయింది.',
+                    ta: 'ஆமாம், கடந்த வாரம் வங்கி சர்வர் பிரச்சனையால் UPI தோல்வியடைந்தது.',
+                    ml: 'അതെ, ബാങ്ക് സെർവർ തകരാർ കാരണം കഴിഞ്ഞ ആഴ്ച യുപിഐ പരാജയപ്പെട്ടു.',
+                    gu: 'હા, બેંક સર્વર સમસ્યાને કારણે ગયે અઠવાડિયે UPI ફેલ થયું હતું.',
+                    kn: 'ಹೌದು, ಬ್ಯಾಂಕ್ ಸರ್ವರ್ ಸಮಸ್ಯೆಯಿಂದ ಕಳೆದ ವಾರ ಯುಪಿಐ ಪಾವತಿ ವಿಫಲವಾಯಿತು.',
+                    'or': 'ହଁ, ବ୍ୟାଙ୍କ ସର୍ଭର ସମସ୍ୟା ଯୋଗୁଁ ଗତ ସପ୍ତାହରେ UPI ଫେଲ୍ ହେଲା।'
                 }
             ];
-            var callMode = 'interactive'; /* 'interactive' (Live Mic Talk as Customer) or 'auto' (Scripted Simulation) */
-            var REC_LANGS = { en: 'en-IN', te: 'te-IN', ta: 'ta-IN', ml: 'ml-IN', gu: 'gu-IN', kn: 'kn-IN', 'or': 'or-IN' };
-            var INTENTS = {
-                en: {
-                    refusal: "I understand, {n}. Please note that non-payment will adversely impact your CIBIL credit score and initiate recovery escalation as per your loan agreement. I have recorded your refusal and escalated this to our recovery team.",
-                    delay: "I understand, {n}. We have noted your financial difficulty for this month. A grace period until 7 October has been approved to settle the ₹12,500 EMI without penalty.",
-                    dispute: "I understand, {n}. I have registered a payment verification dispute ticket and paused further collection calls for 48 hours while our team investigates.",
-                    promise: "Thank you, {n}. I have noted the full payment of INR 12,500 as per your schedule.",
-                    chips: [
-                        { label: '💰 Pay by 7th Oct', text: 'I will pay the full amount of INR 12,500 by 7 October.' },
-                        { label: '⚠️ Couldn\'t pay this month', text: 'I couldn\'t able to pay this month.' },
-                        { label: '🚫 Won\'t pay do whatever you want', text: 'I won\'t pay do whatever you want.' },
-                        { label: '💼 Salary delayed', text: 'Yes, my salary came late this month.' },
-                        { label: '🏥 Medical emergency', text: 'Yes, had unexpected medical expenses this month.' },
-                        { label: '🔍 Already paid / Dispute', text: 'I have already paid this EMI last week, please check.' }
-                    ]
-                },
-                te: {
-                    refusal: "అర్థమైంది, {n}. చెల్లింపు చేయకపోవడం వల్ల మీ CIBIL స్కోరుపై తీవ్ర ప్రతికూల ప్రభావం పడుతుంది మరియు రుణ ఒప్పందం ప్రకారం రికవరీ చర్యలు ప్రారంభించబడతాయి. మీ ప్రతిస్పందనను రికార్డ్ చేసి సంబంధిత బృందానికి ఫార్వార్డ్ చేశాను.",
-                    delay: "అర్థమైంది, {n}. ఈ నెల మీకు ఎదురైన ఆర్థిక ఇబ్బందిని నమోదు చేశాను. ఎటువంటి పెనాల్టీ లేకుండా ₹12,500 EMI చెల్లించడానికి అక్టోబర్ 7 వరకు గడువు ఇవ్వబడింది.",
-                    dispute: "అర్థమైంది, {n}. మీ పేమెంట్ వెరిఫికేషన్ కోసం డిస్ప్యూట్ టికెట్ నమోదు చేశాను, మా బృందం పరిశీలించే వరకు తదుపరి కాల్స్ 48 గంటలు నిలిపివేస్తున్నాము.",
-                    promise: "ధన్యవాదాలు, {n}. మీరు తెలిపిన ప్రకారం పూర్తి మొత్తం ₹12,500 చెల్లింపు నమోదు చేశాను.",
-                    chips: [
-                        { label: '💰 అక్టోబర్ 7న కడతాను', text: 'అక్టోబర్ 7 లోపు పూర్తి మొత్తం ₹12,500 చెల్లిస్తాను.' },
-                        { label: '⚠️ ఈ నెల కట్టలేను', text: 'ఈ నెల నేను కట్టలేకపోతున్నాను.' },
-                        { label: '🚫 నేను కట్టను ఏం చేసుకుంటావో చేసుకో', text: 'నేను కట్టను ఏం చేసుకుంటావో చేసుకో.' },
-                        { label: '💼 జీతం ఆలస్యమైంది', text: 'అవును, ఈ నెల జీతం ఆలస్యంగా వచ్చింది.' },
-                        { label: '🏥 వైద్య ఖర్చులు', text: 'అవును, ఈ నెల అనుకోని కుటుంబ వైద్య ఖర్చులు వచ్చాయి.' },
-                        { label: '🔍 ఇప్పటికే కట్టాను', text: 'నేను ఇప్పటికే చెల్లించాను, దయచేసి చెక్ చేయండి.' }
-                    ]
-                },
-                ta: {
-                    refusal: "புரிகிறது, {n}. பணம் செலுத்தாதது உங்கள் CIBIL கிரெடிட் ஸ்கோரைப் பாதிக்கும், மேலும் கடன் ஒப்பந்தத்தின்படி மீட்பு நடவடிக்கை தொடங்கும். உங்கள் பதிலை பதிவு செய்துள்ளேன்.",
-                    delay: "புரிகிறது, {n}. இந்த மாத உங்கள் நிதிச் சிரமத்தை பதிவு செய்துள்ளேன். அபராதம் இல்லாமல் ₹12,500 EMI செலுத்த அக்டோபர் 7 வரை அவகாசம் வழங்கப்பட்டுள்ளது.",
-                    dispute: "புரிகிறது, {n}. உங்கள் கட்டண சரிபார்ப்பிற்காக சர்ச்சை டிக்கெட் பதிவு செய்துள்ளேன், 48 மணிநேரத்திற்கு அழைப்புகள் நிறுத்தப்படும்.",
-                    promise: "நன்றி, {n}. நீங்கள் கூறியபடி ₹12,500 முழுத் தொகை செலுத்துவதை பதிவு செய்துள்ளேன்.",
-                    chips: [
-                        { label: '💰 அக்டோபர் 7க்குள் செலுத்துகிறேன்', text: 'அக்டோபர் 7க்குள் முழுத் தொகையான ₹12,500 செலுத்துகிறேன்.' },
-                        { label: '⚠️ இந்த மாதம் செலுத்த முடியாது', text: 'இந்த மாதம் என்னால் செலுத்த முடியவில்லை.' },
-                        { label: '🚫 நான் கட்ட மாட்டேன் என்ன வேண்டுமானாலும் செய்', text: 'நான் கட்ட மாட்டேன் என்ன வேண்டுமானாலும் செய்.' },
-                        { label: '💼 சம்பளம் தாமதம்', text: 'ஆமாம், இந்த மாதம் சம்பளம் தாமதமாக வந்தது.' },
-                        { label: '🏥 மருத்துவ செலவு', text: 'ஆமாம், இந்த மாதம் எதிர்பாராத மருத்துவ செலவுகள் ஏற்பட்டன.' },
-                        { label: '🔍 ஏற்கனவே செலுத்திவிட்டேன்', text: 'நான் ஏற்கனவே செலுத்திவிட்டேன், சரிபார்க்கவும்.' }
-                    ]
-                },
-                ml: {
-                    refusal: "മനസ്സിലായി, {n}. തിരിച്ചടവ് വൈകുന്നത് താങ്കളുടെ CIBIL സ്കോറിനെ പ്രതികൂലമായി ബാധിക്കുകയും റിക്കവറി നടപടികൾ ആരംഭിക്കുകയും ചെയ്യും. താങ്കളുടെ മറുപടി രേഖപ്പെടുത്തി.",
-                    delay: "മനസ്സിലായി, {n}. ഈ മാസത്തെ സാമ്പത്തിക ബുദ്ധിമുട്ട് രേഖപ്പെടുത്തിയിട്ടുണ്ട്. പിഴയില്ലാതെ ₹12,500 EMI അടയ്ക്കാൻ ഒക്ടോബർ 7 വരെ സമയം അനുവദിച്ചു.",
-                    dispute: "മനസ്സിലായി, {n}. പേയ്‌മെന്റ് പരിശോധനയ്ക്കായി ഒരു തർക്ക ടിക്കറ്റ് രേഖപ്പെടുത്തി, തുടർ കോളുകൾ 48 മണിക്കൂർ താൽക്കാലികമായി നിർത്തുന്നു.",
-                    promise: "നന്ദി, {n}. താങ്കൾ പറഞ്ഞതനുസരിച്ച് ₹12,500 പൂർണ്ണ തുക തിരിച്ചടവ് രേഖപ്പെടുത്തിയിട്ടുണ്ട്.",
-                    chips: [
-                        { label: '💰 ഒക്ടോബർ 7-നകം അടയ്ക്കാം', text: 'ഒക്ടോബർ 7-നകം മുഴുവൻ തുകയായ ₹12,500 അടയ്ക്കാം.' },
-                        { label: '⚠️ ഈ മാസം അടയ്ക്കാൻ കഴിയില്ല', text: 'ഈ മാസം എനിക്ക് അടയ്ക്കാൻ കഴിയില്ല.' },
-                        { label: '🚫 ഞാൻ നൽകില്ല എന്തുവേണമെങ്കിലും ചെയ്തോളൂ', text: 'ഞാൻ നൽകില്ല എന്തുവേണമെങ്കിലും ചെയ്തോളൂ.' },
-                        { label: '💼 ശമ്പളം വൈകി', text: 'അതെ, ഈ മാസം ശമ്പളം വൈകിയാണ് കിട്ടിയത്.' },
-                        { label: '🏥 മെഡിക്കൽ അത്യാഹിതം', text: 'അതെ, ഈ മാസം അപ്രതീക്ഷിത മെഡിക്കൽ ചെലവുകൾ വന്നു.' }
-                    ]
-                },
-                gu: {
-                    refusal: "સમજાયું, {n}. ચુકવણી ન કરવાથી તમારા CIBIL સ્કોર પર ખરાબ અસર પડશે અને લોન કરાર મુજબ રિકવરી કાર્યવાહી શરૂ થશે. તમારો જવાબ નોંધી લીધો છે.",
-                    delay: "સમજાયું, {n}. આ મહિનાની તમારી નાણાકીય મુશ્કેલી નોંધી લીધી છે. દંડ વગર ₹12,500 ની EMI ભરવા માટે 7 ઓક્ટોબર સુધીનો સમય આપવામાં આવ્યો છે.",
-                    dispute: "સમજાયું, {n}. ચુકવણી ચકાસણી માટે ફરિયાદ નોંધાઈ ગઈ છે, 48 કલાક સુધી કૉલ સ્થગિત રહેશે.",
-                    promise: "આભાર, {n}. તમારા જણાવ્યા મુજબ પૂરી રકમ ₹12,500 ની ચુકવણી નોંધી લીધી છે.",
-                    chips: [
-                        { label: '💰 7 ઓક્ટોબર સુધીમાં ભરીશ', text: '7 ઓક્ટોબર સુધીમાં પૂરી રકમ ₹12,500 ભરી દઈશ.' },
-                        { label: '⚠️ આ મહિને નહીં ભરી શકું', text: 'આ મહિને હું ભરી શકું તેમ નથી.' },
-                        { label: '🚫 નથી ભરવું જે કરવું હોય તે કરો', text: 'નથી ભરવું જે કરવું હોય તે કરો.' },
-                        { label: '💼 પગાર મોડો આવ્યો', text: 'હા, આ મહિને પગાર મોડો આવ્યો.' },
-                        { label: '🏥 મેડિકલ ખર્ચ', text: 'હા, આ મહિને અચાનક મેડિકલ ખર્ચ આવી ગયો હતો.' }
-                    ]
-                },
-                kn: {
-                    refusal: "ಅರ್ಥವಾಯಿತು, {n}. ಮರುಪಾವತಿ ಮಾಡದಿರುವುದು ನಿಮ್ಮ CIBIL ಸ್ಕೋರ್ ಮೇಲೆ ಪರಿಣಾಮ ಬೀರುತ್ತದೆ ಮತ್ತು ಸಾಲದ ಒಪ್ಪಂದದ ಪ್ರಕಾರ ರಿಕವರಿ ಕ್ರಮ ಕೈಗೊಳ್ಳಲಾಗುವುದು. ನಿಮ್ಮ ಪ್ರತಿಕ್ರಿಯೆಯನ್ನು ದಾಖಲಿಸಿದ್ದೇನೆ.",
-                    delay: "ಅರ್ಥವಾಯಿತು, {n}. ಈ ತಿಂಗಳ ನಿಮ್ಮ ಆರ್ಥಿಕ ತೊಂದರೆಯನ್ನು ದಾಖಲಿಸಲಾಗಿದೆ. ಯಾವುದೇ ದಂಡವಿಲ್ಲದೆ ₹12,500 EMI ಪಾವತಿಸಲು ಅಕ್ಟೋಬರ್ 7 ರವರೆಗೆ ವಿಸ್ತರಿಸಲಾಗಿದೆ.",
-                    dispute: "ಅರ್ಥವಾಯಿತು, {n}. ಪಾವತಿ ಪರಿಶೀಲನೆಗಾಗಿ ದೂರು ದಾಖಲಿಸಲಾಗಿದೆ, 48 ಗಂಟೆಗಳ ಕಾಲ ಕರೆಗಳನ್ನು ಸ್ಥಗಿತಗೊಳಿಸಲಾಗುತ್ತದೆ.",
-                    promise: "ಧನ್ಯವಾದಗಳು, {n}. ನೀವು ತಿಳಿಸಿದ ದಿನಾಂಕದೊಳಗೆ ಪೂರ್ಣ ಮೊತ್ತ ₹12,500 ಪಾವತಿಯನ್ನು ದಾಖಲಿಸಿದ್ದೇನೆ.",
-                    chips: [
-                        { label: '💰 ಅಕ್ಟೋಬರ್ 7 ರೊಳಗೆ ಪಾವತಿಸುತ್ತೇನೆ', text: 'ಅಕ್ಟೋಬರ್ 7 ರೊಳಗೆ ಪೂರ್ಣ ಮೊತ್ತ ₹12,500 ಪಾವತಿಸುತ್ತೇನೆ.' },
-                        { label: '⚠️ ಈ ತಿಂಗಳು ಪಾವತಿಸಲು ಸಾಧ್ಯವಿಲ್ಲ', text: 'ಈ ತಿಂಗಳು ನನಗೆ ಪಾವತಿಸಲು ಸಾಧ್ಯವಿಲ್ಲ.' },
-                        { label: '🚫 ನಾನು ಕಟ್ಟಲ್ಲ ಏನು ಮಾಡ್ತೀರೋ ಮಾಡಿಕೊಳ್ಳಿ', text: 'ನಾನು ಕಟ್ಟಲ್ಲ ಏನು ಮಾಡ್ತೀರೋ ಮಾಡಿಕೊಳ್ಳಿ.' },
-                        { label: '💼 ಸಂಬಳ ತಡವಾಯಿತು', text: 'ಹೌದು, ಈ ತಿಂಗಳು ಸಂಬಳ ತಡವಾಗಿ ಬಂತು.' },
-                        { label: '🏥 ವೈದ್ಯಕೀಯ ವೆಚ್ಚ', text: 'ಹೌದು, ಈ ತಿಂಗಳು ಅನಿರೀಕ್ಷಿತ ವೈದ್ಯಕೀಯ ವೆಚ್ಚಗಳು ಬಂದವು.' }
-                    ]
-                },
-                'or': {
-                    refusal: "ବୁଝିଲି, {n}। ପେମେଣ୍ଟ ନକଲେ CIBIL ସ୍କୋର ଖରାପ ହେବ ଏବଂ ଲୋନ୍ ଚୁକ୍ତି ଅନୁସାରେ ରିକଭରି ପ୍ରକ୍ରିୟା ଆରମ୍ଭ ହେବ। ଆପଣଙ୍କ ଉତ୍ତର ରେକର୍ଡ କଲି।",
-                    delay: "ବୁଝିଲି, {n}। ଏହି ମାସର ଆପଣଙ୍କ ଆର୍ଥିକ ଅସୁବିଧା ରେକର୍ଡ କଲି। ବିନା ଜରିମାନାରେ ₹12,500 EMI ଦେବା ପାଇଁ ଅକ୍ଟୋବର 7 ପର୍ଯ୍ୟନ୍ତ ସମୟ ଦିଆଗଲା।",
-                    dispute: "ବୁଝିଲି, {n}। ପେମେଣ୍ଟ ଯାଞ୍ଚ ପାଇଁ ଅଭିଯୋଗ ରେକର୍ଡ କଲି, 48 ଘଣ୍ଟା ପାଇଁ କଲ୍ ସ୍ଥଗିତ ରହିବ।",
-                    promise: "ଧନ୍ୟବାଦ, {n}। ଆପଣଙ୍କ କହିବା ଅନୁସାରେ ₹12,500 ପୂରା ରାଶି ଦେୟ ଲେଖିନେଲି।",
-                    chips: [
-                        { label: '💰 ଅକ୍ଟୋବର 7 ସୁଦ୍ଧା ଦେବି', text: 'ଅକ୍ଟୋବର 7 ସୁଦ୍ଧା ପୂରା ରାଶି ₹12,500 ଦେବି।' },
-                        { label: '⚠️ ଏହି ମାସରେ ଦେଇପାରିବିନି', text: 'ଏହି ମାସରେ ମୁଁ ଦେଇପାରିବିନି।' },
-                        { label: '🚫 ଦେବିନି ଯାହା କରିବାର ଅଛି କର', text: 'ଦେବିନି ଯାହା କରିବାର ଅଛି କର।' },
-                        { label: '💼 ଦରମା ଡେରି ହେଲା', text: 'ହଁ, ଏହି ମାସ ଦରମା ଡେରିରେ ଆସିଲା।' }
-                    ]
-                }
-            };
-
-            function analyzeIntent(t) {
-                var s = (t || '').toLowerCase();
-
-                /* 1. Hard Refusal / Defiance */
-                if (/(wont|won't|will not|never|do whatever|dont want|don't want|refuse|not paying|kattanu|ivvanu|chesuko|chesukondi|matten|mudiyadhu|kuduka|nalkilla|tharilla|nathi bharvu|kattalla|kodalla|debini|కట్టను|చేసుకో|ఇవ్వను|చేసుకోండి|మాటెన్|முடியாது|നൽകില്ല|തരില്ല|નથી ભરવું|ಕೊಡಲ್ಲ|ಕಟ್ಟಲ್ಲ|ଦେବିନି)/.test(s)) {
-                    return 'refusal';
-                }
-
-                /* 2. Dispute / Already Paid / Fraud */
-                if (/(already paid|paid already|not my loan|wrong person|wrong number|cheated|dispute|fraud|paid last|paid yesterday|done payment|ippatike|kattesa|chellinchanu|yerkanave|panam nalki|bhari didha|pavatissidene|deisarichi|ఇప్పటికే|కట్టేసా|చెల్లించాను|ஏற்கனவே|പണം നൽകി|ભરી દીધા|ಪಾವತಿಸಿದ್ದೇನೆ|ଦେଇସାରିଛି)/.test(s)) {
-                    return 'dispute';
-                }
-
-                /* 3. Inability / Delay / Financial Hardship (e.g. "I couldn't able to pay this month") */
-                if (/(could not|couldn't|couldnt|unable|can't|cant|cannot|not able|delay|late|next month|no money|salary|problem|issue|medical|emergency|hospital|broke|loss|alasayam|kudaradu|dabbu|jeetham|thamatham|panam illa|sambalam|vaiki|shambalam|modu|paisa|thada|sambala|deri|tankaa|ఆలస్యం|కుదరదు|కుదరలేదు|పైసలు లేవు|డబ్బులు లేవు|జీతం|హాస్పిటల్|సమస్య|కట్టలేకపోయాను|కట్టలేను|తరువాత|தாமதம்|பணம் இல்லை|சம்பளம்|மருத்துவம்|முடியவில்லை|വൈകി|പണമില്ല|ശമ്പളം|കഴിയില്ല|મોડું|પૈસા નથી|પગાર|નહીં ભરી|ತಡ|ಹಣವಿಲ್ಲ|ಸಂಬಳ|ಸಾಧ್ಯವಿಲ್ಲ|ಡେରି|ଟଙ୍କା ନାହିଁ|ଦେଇପାରିବିନି)/.test(s)) {
-                    return 'delay';
-                }
-
-                /* 4. Promise to Pay */
-                return 'promise';
-            }
-
             function personalize(base, L) {
                 var rz = REASONS[Math.floor(Math.random() * REASONS.length)];
                 var r = { lines: base.slice(), en: PE.slice(), idx: [], name: '', rec: '', reason: rz };
@@ -3803,8 +3531,10 @@
                 r.en = inject(r.en, r.rec);
                 r.idx = [0, 4, 6];
                 if (rz.key !== 'salary_delayed') r.idx.push(3);
-                return r;
+                return r
             }
+            /* the name lines can't be pre-recorded, so they are synthesised on demand (server) or spoken by the browser */
+            /* spoken form of the text: EMI read letter by letter, money read naturally (same rules as generate_voices.py) */
             var EMIS = { en: 'E M I', ta: '\u0b88 \u0b8e\u0bae\u0bcd \u0b90', te: '\u0c08 \u0c0e\u0c02 \u0c10', ml: '\u0d08 \u0d0e\u0d02 \u0d10', gu: '\u0a88 \u0a8f\u0aae \u0a86\u0a88', kn: '\u0c88 \u0c8e\u0c82 \u0c90', 'or': '\u0b07 \u0b0f\u0b2e\u0b4d \u0b06\u0b07' };
             function ttsFix(l, t) { if (l === 'en') t = t.replace(/INR\s*([\d,]+)/g, '$1 rupees'); return t.replace(/EMI/g, EMIS[l] || 'E M I') }
             function natScore(v) { return /natural|neural|online/i.test(v.name) ? 1 : 0 }
@@ -3835,38 +3565,6 @@
                 var u = await Promise.race([PC[k], sleep(TTS_WAIT).then(function () { return null })]);
                 return u ? playSrc(u) : false
             }
-            var REPLY_CACHE = {};
-            function prefetchReplies(L, nm) {
-                REPLY_CACHE = {};
-                if (!TTS_ENDPOINT || !snd) return;
-                var cfg = INTENTS[L] || INTENTS.en;
-                ['refusal', 'delay', 'dispute', 'promise'].forEach(function (intKey) {
-                    var text = (cfg[intKey] || cfg.promise).replace('{n}', nm);
-                    var u = TTS_ENDPOINT + (TTS_ENDPOINT.indexOf('?') < 0 ? '?' : '&') + 'lang=' + L + '&role=agent&alt=0&text=' + encodeURIComponent(text);
-                    REPLY_CACHE[intKey] = fetchTTS(u);
-                });
-            }
-            async function speakDynamic(t, ag, l, intKey) {
-                if (!snd) return false;
-                var played = false;
-                if (intKey && REPLY_CACHE[intKey]) {
-                    var cachedBlob = await Promise.race([REPLY_CACHE[intKey], sleep(3500).then(function () { return null })]);
-                    if (cachedBlob) {
-                        played = await playSrc(cachedBlob);
-                        if (played) return true;
-                    }
-                }
-                if (!played && TTS_ENDPOINT) {
-                    var role = ag ? 'agent' : 'customer';
-                    var u = TTS_ENDPOINT + (TTS_ENDPOINT.indexOf('?') < 0 ? '?' : '&') + 'lang=' + l + '&role=' + role + '&alt=' + (fcm ? 1 : 0) + '&text=' + encodeURIComponent(t);
-                    var blobUrl = await fetchTTS(u);
-                    if (blobUrl) {
-                        played = await playSrc(blobUrl);
-                        if (played) return true;
-                    }
-                }
-                return played;
-            }
             function updPv() {
                 var pv = document.getElementById('plpv'), gn = document.getElementById('plgn'), inp = document.getElementById('plnmi');
                 if (!formOn || !pv || !inp) return;
@@ -3877,250 +3575,40 @@
                 pv.appendChild(document.createTextNode('In ' + PNM[pcur] + ' the agent will say: '));
                 var b = document.createElement('b'); b.textContent = addrFor(pcur, xlit(nm, pcur)); pv.appendChild(b); pv.appendChild(document.createTextNode(' (customer voice: ' + (cgen === 'F' ? 'female' : 'male') + ')'))
             }
-
             function askName() {
                 if (running) return;
                 if (formOn) { var i0 = document.getElementById('plnmi'); if (i0) i0.focus({ preventScroll: true }); return }
                 pidle(); formOn = true; warmTTS();
-                jn.innerHTML = '<div class="plsc plmid"><form class="plnm" id="plnm" autocomplete="off"><div class="plmode" id="plmode" role="group" aria-label="Call Mode"><button type="button" class="on" data-m="interactive">🎙️ Talk as Customer (Live Mic)</button><button type="button" data-m="auto">🤖 Auto Demo</button></div><label for="plnmi">Enter your name<small>The AI agent will call you and speak directly to you</small></label><input id="plnmi" type="text" maxlength="30" placeholder="e.g. Somesh" autocapitalize="words" spellcheck="false"><div class="plgn" id="plgn" role="group" aria-label="Title and voice"><span>I am</span><button type="button" data-g="M">Mr (male)</button><button type="button" data-g="F">Ms (female)</button></div><div class="plpv" id="plpv" aria-live="polite"></div><div class="plnb"><button class="go" type="submit">Start Live Call</button><button class="sk" id="plskip" type="button">Skip</button></div></form></div>';
-                var f = document.getElementById('plnm'), inp = document.getElementById('plnmi'), gn = document.getElementById('plgn'), md = document.getElementById('plmode');
+                jn.innerHTML = '<div class="plsc plmid"><form class="plnm" id="plnm" autocomplete="off"><label for="plnmi">Enter your name<small>The agent will greet you by name, respectfully</small></label><input id="plnmi" type="text" maxlength="30" placeholder="e.g. Praveen" autocapitalize="words" spellcheck="false"><div class="plgn" id="plgn" role="group" aria-label="Title and voice"><span>I am</span><button type="button" data-g="M">Mr (male)</button><button type="button" data-g="F">Ms (female)</button></div><div class="plpv" id="plpv" aria-live="polite"></div><div class="plnb"><button class="go" type="submit">Start call</button><button class="sk" id="plskip" type="button">Skip</button></div></form></div>';
+                var f = document.getElementById('plnm'), inp = document.getElementById('plnmi'), gn = document.getElementById('plgn');
                 inp.value = cname; if (cname && !gtouch) cgen = guessF(cname) ? 'F' : 'M';
-                function mark() {
-                    gn.querySelectorAll('button').forEach(function (x) { x.classList.toggle('on', x.dataset.g === cgen) });
-                    md.querySelectorAll('button').forEach(function (x) { x.classList.toggle('on', x.dataset.m === callMode) });
-                }
+                function mark() { gn.querySelectorAll('button').forEach(function (x) { x.classList.toggle('on', x.dataset.g === cgen) }) }
                 mark(); updPv();
-                md.addEventListener('click', function (e) { var b = e.target.closest('button'); if (!b) return; callMode = b.dataset.m; mark(); f.querySelector('.go').textContent = callMode === 'interactive' ? 'Start Live Call' : 'Start Auto Demo' });
                 inp.addEventListener('input', function () { if (!gtouch) { cgen = guessF(cleanName(inp.value)) ? 'F' : 'M'; mark() } updPv() });
                 gn.addEventListener('click', function (e) { var b = e.target.closest('button'); if (!b) return; gtouch = true; cgen = b.dataset.g; mark(); updPv() });
-                function go(skip) {
-                    cname = skip ? '' : cleanName(inp.value);
-                    formOn = false;
-                    run();
-                }
+                function go(skip) { cname = skip ? '' : cleanName(inp.value); formOn = false; run() }
                 f.addEventListener('submit', function (e) { e.preventDefault(); go(false) });
                 document.getElementById('plskip').addEventListener('click', function () { go(true) });
                 try { inp.focus({ preventScroll: true }) } catch (e) { }
             }
-
             async function run() {
                 if (running) return; running = true; ib.disabled = true; pl.querySelectorAll('button').forEach(function (x) { x.disabled = true }); pidle();
                 try {
-                    var en = pcur === 'en', pz = personalize(en ? PE : PN[pcur], pcur), lines = pz.lines;
-                    jn.innerHTML = '<div class="plsc"><div class="plwho"><div class="plpp">' + AGI + '<small>Agent</small></div><div class="plwire"><i></i><i></i><i></i></div><div class="plpp ring" id="plcu">' + CUI + '<small>' + (pz.name || 'You (Customer)') + '</small></div></div><div class="plstt" id="plst">Agent is calling you...</div><div class="plcv" id="plcv"></div><div id="plmicwrap"></div></div>';
-                    var stt = document.getElementById('plst'), cv = document.getElementById('plcv'), cu = document.getElementById('plcu'), wr = jn.querySelector('.plwire'), mw = document.getElementById('plmicwrap');
-                    if (snd) { ctx(); lv(); PL.muted = true; PL.src = SIL; var up = PL.play(); if (up && up.catch) up.catch(function () { }); if (window.speechSynthesis) { speechSynthesis.cancel(); } }
+                    var en = pcur === 'en', pz = personalize(en ? PE : PN[pcur], pcur), lines = pz.lines, d = { id: 'c_' + (48213 + cnt), customer_name: pz.rec || null, language: PNM[pcur], intent: 'promise_to_pay', sentiment: 'cooperative', promised_amount: 'INR 12,500', follow_up: '2026-10-07', dispute: false, callback_requested: false, reason_for_non_payment: pz.reason.key, summary: pz.reason.summary, transcript: tr(lines) };
+                    if (!en) d.transcript_english = tr(pz.en); d.recording_url = 'https://recordings.example.com/calls/' + d.id + '.wav';
+                    jn.innerHTML = '<div class="plsc"><div class="plwho"><div class="plpp">' + AGI + '<small>Agent</small></div><div class="plwire"><i></i><i></i><i></i></div><div class="plpp ring" id="plcu">' + CUI + '<small>Customer</small></div></div><div class="plstt" id="plst">Agent is calling the customer...</div><div class="plcv" id="plcv"></div></div>';
+                    var stt = document.getElementById('plst'), cv = document.getElementById('plcv'), cu = document.getElementById('plcu'), wr = jn.querySelector('.plwire'); if (pz.name) cu.querySelector('small').textContent = pz.name;
+                    if (snd) { ctx(); lv(); PL.muted = true; PL.src = SIL; var up = PL.play(); if (up && up.catch) up.catch(function () { }); if (window.speechSynthesis) { speechSynthesis.cancel(); speechSynthesis.speak(new SpeechSynthesisUtterance('')) } }
                     var noted = false; preload(pcur, 8); prefetchCustom(pz, pcur); st(0, 'on', 1); st(0, 'vib', 1); ringtone(); await sleep(snd ? 3400 : 2300); if (snd && pz.idx.length && PC[0]) await Promise.race([PC[0], sleep(TTS_WAIT)]);
-                    stt.textContent = 'Call Connected'; pickup(); cu.classList.remove('ring'); wr.classList.add('live'); jn.querySelectorAll('.plpp').forEach(function (x) { x.classList.add('talk') }); st(1, 'on', 1); st(1, 'vib', 1); await sleep(900);
+                    stt.textContent = 'Customer picked up the phone'; pickup(); cu.classList.remove('ring'); wr.classList.add('live'); jn.querySelectorAll('.plpp').forEach(function (x) { x.classList.add('talk') }); st(1, 'on', 1); st(1, 'vib', 1); await sleep(900);
                     stt.textContent = 'Conversation in progress (' + PNM[pcur] + ')...'; var pp = jn.querySelectorAll('.plpp');
-
-                    var intentResult = 'promise', customerSpoken = '', dialogueTranscript = [];
-
-                    if (callMode === 'interactive') {
-                        /* ---- Live Interactive Turn 0 (Agent Opening) ---- */
-                        var addrName = addrFor(pcur, xlit(pz.name || (pcur === 'te' ? 'గారు' : 'Customer'), pcur));
-                        prefetchReplies(pcur, addrName);
-
-                        var b0 = document.createElement('div'); b0.className = 'plbb ag'; b0.innerHTML = '<em>Agent</em>'; b0.appendChild(document.createTextNode(lines[0])); cv.appendChild(b0); jn.scrollTop = jn.scrollHeight;
-                        pp[0].classList.add('talk'); pp[1].classList.remove('talk');
-                        await say(lines[0], true, pcur, 0, true);
-                        await sleep(250);
-
-                        var b1 = document.createElement('div'); b1.className = 'plbb ag'; b1.innerHTML = '<em>Agent</em>'; b1.appendChild(document.createTextNode(lines[2])); cv.appendChild(b1); jn.scrollTop = jn.scrollHeight;
-                        await say(lines[2], true, pcur, 2, false);
-                        pp[0].classList.remove('talk');
-                        dialogueTranscript.push('Agent: ' + lines[0] + ' ' + lines[2]);
-
-                        /* ---- Live Customer Speaking Turn (Microphone / Chips) ---- */
-                        stt.textContent = '🎙️ Tap 🎙️ to speak or click an option below:';
-                        pp[1].classList.add('talk');
-                        var cfg = INTENTS[pcur] || INTENTS.en;
-                        var chipHtml = cfg.chips.map(function (c) { return '<button type="button" class="plchip" data-t="' + c.text.replace(/"/g, '&quot;') + '">' + c.label + '</button>' }).join('');
-                        mw.innerHTML = '<div class="plmic-box"><div class="plmic-row"><button type="button" class="plmic-rec off" id="plmicbtn" title="Tap to Speak (Live Mic)" aria-label="Microphone">🎙️</button><input type="text" class="plmic-inp" id="plmictext" placeholder="Tap 🎙️ to speak or type here..." aria-label="Customer reply"><button type="button" class="plmic-send" id="plmicsend">Send</button></div><div class="plchips">' + chipHtml + '</div></div>';
-
-                        var micBtn = document.getElementById('plmicbtn'), micInp = document.getElementById('plmictext'), sendBtn = document.getElementById('plmicsend');
-                        var recognition = null, isListening = false, userFinished = false, silenceTimer = null;
-
-                        var customerPromise = new Promise(function (resolve) {
-                            function submitText(val) {
-                                if (userFinished) return;
-                                userFinished = true;
-                                clearTimeout(silenceTimer);
-                                val = (val || micInp.value || '').trim();
-                                if (!val) val = cfg.chips[0].text;
-                                if (recognition) {
-                                    try { recognition.abort(); } catch (e) { }
-                                    recognition = null;
-                                }
-                                mw.innerHTML = '';
-                                resolve(val);
-                            }
-
-                            sendBtn.addEventListener('click', function () { submitText(micInp.value) });
-                            micInp.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); submitText(micInp.value) } });
-                            mw.querySelectorAll('.plchip').forEach(function (btn) { btn.addEventListener('click', function () { submitText(btn.dataset.t) }) });
-
-                            var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-
-                            async function toggleListening() {
-                                if (userFinished) return;
-                                if (isListening) {
-                                    if (recognition) {
-                                        try { recognition.stop(); } catch (e) { }
-                                    }
-                                    return;
-                                }
-
-                                /* Request permission on user gesture (required for Safari / macOS / iOS) */
-                                if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-                                    try {
-                                        var stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                                        stream.getTracks().forEach(function (t) { t.stop(); });
-                                    } catch (err) {
-                                        console.warn('Microphone permission:', err);
-                                        stt.textContent = '⚠️ Mic access needed. Tap 🎙️ to allow, or select an option below:';
-                                    }
-                                }
-
-                                if (!SR) {
-                                    stt.textContent = '⚠️ Speech recognition not supported in this browser. Please select an option below:';
-                                    micInp.focus();
-                                    return;
-                                }
-
-                                try {
-                                    if (recognition) {
-                                        try { recognition.abort(); } catch (e) { }
-                                    }
-                                    recognition = new SR();
-                                    var targetLang = REC_LANGS[pcur] || 'en-IN';
-                                    recognition.lang = targetLang;
-                                    recognition.interimResults = true;
-                                    recognition.continuous = false;
-                                    recognition.maxAlternatives = 1;
-
-                                    recognition.onstart = function () {
-                                        isListening = true;
-                                        micBtn.classList.remove('off');
-                                        micBtn.textContent = '🔴';
-                                        micInp.placeholder = 'Listening... Speak into your mic now';
-                                        stt.textContent = '🔴 Listening... Speak into your microphone now';
-                                    };
-
-                                    recognition.onresult = function (event) {
-                                        var fullStr = '';
-                                        for (var i = 0; i < event.results.length; ++i) {
-                                            fullStr += event.results[i][0].transcript;
-                                        }
-                                        fullStr = fullStr.trim();
-                                        if (fullStr) {
-                                            micInp.value = fullStr;
-                                            stt.textContent = '🎙️ Heard: "' + fullStr + '"';
-                                            clearTimeout(silenceTimer);
-                                            silenceTimer = setTimeout(function () {
-                                                if (!userFinished && micInp.value.trim().length > 0) {
-                                                    submitText(micInp.value);
-                                                }
-                                            }, 1200);
-                                        }
-                                    };
-
-                                    recognition.onerror = function (err) {
-                                        console.warn('SpeechRecognition error:', err);
-                                        isListening = false;
-                                        micBtn.classList.add('off');
-                                        micBtn.textContent = '🎙️';
-                                        if (err && (err.error === 'language-not-supported' || err.error === 'service-not-allowed')) {
-                                            if (recognition && recognition.lang !== 'en-IN') {
-                                                try {
-                                                    recognition.lang = 'en-IN';
-                                                    recognition.start();
-                                                    return;
-                                                } catch (e2) { }
-                                            }
-                                            stt.textContent = '⚠️ Safari Indic dictation not enabled. Tap mic or click an option below:';
-                                        } else if (err && err.error === 'not-allowed') {
-                                            stt.textContent = '⚠️ Mic access denied. Tap 🎙️ to allow, or select an option below:';
-                                        }
-                                    };
-
-                                    recognition.onend = function () {
-                                        isListening = false;
-                                        micBtn.classList.add('off');
-                                        micBtn.textContent = '🎙️';
-                                        if (!userFinished && micInp.value.trim().length > 0) {
-                                            submitText(micInp.value);
-                                        }
-                                    };
-
-                                    recognition.start();
-                                } catch (e) {
-                                    console.warn('Failed to start recognition:', e);
-                                    stt.textContent = '⚠️ Could not start mic. Tap 🎙️ or click an option below:';
-                                }
-                            }
-
-                            micBtn.addEventListener('click', toggleListening);
-                        });
-
-                        customerSpoken = await customerPromise;
-                        var bc = document.createElement('div'); bc.className = 'plbb cu'; bc.innerHTML = '<em>' + (pz.name || 'Customer') + '</em>'; bc.appendChild(document.createTextNode(customerSpoken)); cv.appendChild(bc); jn.scrollTop = jn.scrollHeight;
-                        dialogueTranscript.push('Customer: ' + customerSpoken);
-                        pp[1].classList.remove('talk');
-
-                        /* ---- Agent Contextual Response Turn ---- */
-                        intentResult = analyzeIntent(customerSpoken);
-                        var agReply = (cfg[intentResult] || cfg.promise).replace('{n}', addrName);
-
-                        await sleep(350);
-                        stt.textContent = 'Agent responding...';
-                        var bResp = document.createElement('div'); bResp.className = 'plbb ag'; bResp.innerHTML = '<em>Agent</em>'; bResp.appendChild(document.createTextNode(agReply)); cv.appendChild(bResp); jn.scrollTop = jn.scrollHeight;
-                        pp[0].classList.add('talk');
-                        await speakDynamic(agReply, true, pcur, intentResult);
-                        pp[0].classList.remove('talk');
-                        dialogueTranscript.push('Agent: ' + agReply);
-
-                    } else {
-                        /* ---- Automated Scripted Fallback Demo ---- */
-                        for (var k = 0; k < lines.length; k++) {
-                            var ag = k % 2 === 0, b = document.createElement('div'); b.className = 'plbb ' + (ag ? 'ag' : 'cu'); b.innerHTML = '<em></em>'; b.firstChild.textContent = ag ? 'Agent' : (pz.name || 'Customer'); b.appendChild(document.createTextNode(lines[k])); cv.appendChild(b); jn.scrollTop = jn.scrollHeight; pp[ag ? 0 : 1].classList.add('talk'); pp[ag ? 1 : 0].classList.remove('talk'); var sp = await say(lines[k], ag, pcur, k, pz.idx.indexOf(k) > -1); if (!sp && snd && !noted) { noted = true; stt.textContent = 'Conversation in progress (' + PNM[pcur] + '), captions only: no voice for this language yet.' } await sleep(sp ? 340 + Math.random() * 260 : 1400);
-                            dialogueTranscript.push((ag ? 'Agent: ' : 'Customer: ') + lines[k]);
-                        }
-                    }
-
-                    hang(); stt.textContent = 'Call ended'; wr.classList.remove('live'); jn.querySelectorAll('.plpp').forEach(function (x) { x.classList.remove('talk') }); fin(0); fin(1); await sleep(1100);
-
-                    /* ---- Dynamic LLM Ticket Extraction based on Live Intent ---- */
-                    var isRefusal = intentResult === 'refusal';
-                    var isDispute = intentResult === 'dispute';
-                    var isDelay = intentResult === 'delay';
-                    var d = {
-                        id: 'c_' + (48213 + cnt),
-                        customer_name: pz.rec || 'Customer',
-                        language: PNM[pcur],
-                        intent: isRefusal ? 'refusal_to_pay' : (isDispute ? 'dispute_raised' : (isDelay ? 'delayed_payment_hardship' : 'promise_to_pay')),
-                        sentiment: isRefusal ? 'hostile' : (isDispute ? 'disputing' : (isDelay ? 'financial_hardship' : 'cooperative')),
-                        promised_amount: isRefusal ? null : 'INR 12,500',
-                        follow_up: isRefusal ? 'escalate_to_legal_recovery' : (isDispute ? 'pause_calls_48h' : (isDelay ? 'grace_period_2026-10-07' : '2026-10-07')),
-                        dispute: isDispute || isRefusal,
-                        callback_requested: isDelay,
-                        escalation_required: isRefusal,
-                        reason_for_non_payment: isRefusal ? 'customer_refused_payment' : (isDispute ? 'disputed_transaction' : (isDelay ? 'inability_to_pay_current_month' : pz.reason.key)),
-                        summary: isRefusal
-                            ? 'Customer explicitly refused payment ("' + customerSpoken + '"). Agent issued formal CIBIL credit score impact warning and routed ticket for immediate debt recovery escalation.'
-                            : (isDispute
-                                ? 'Customer disputed the loan balance ("' + customerSpoken + '"). Dispute ticket #DISP-4821 raised and collection calls paused for 48 hours.'
-                                : (isDelay
-                                    ? 'Customer stated inability to pay this month ("' + customerSpoken + '"). Agent approved grace period extension until 7 October 2026 without late fee penalty.'
-                                    : 'Customer confirmed the overdue EMI (' + (customerSpoken || pz.reason.summary) + ') and promised full payment of INR 12,500 by 7 October.')),
-                        transcript: dialogueTranscript.join('\n')
-                    };
-
+                    for (var k = 0; k < lines.length; k++) { var ag = k % 2 === 0, b = document.createElement('div'); b.className = 'plbb ' + (ag ? 'ag' : 'cu'); b.innerHTML = '<em></em>'; b.firstChild.textContent = ag ? 'Agent' : (pz.name || 'Customer'); b.appendChild(document.createTextNode(lines[k])); cv.appendChild(b); jn.scrollTop = jn.scrollHeight; pp[ag ? 0 : 1].classList.add('talk'); pp[ag ? 1 : 0].classList.remove('talk'); var sp = await say(lines[k], ag, pcur, k, pz.idx.indexOf(k) > -1); if (!sp && snd && !noted) { noted = true; stt.textContent = 'Conversation in progress (' + PNM[pcur] + '), captions only: no voice for this language yet.' } await sleep(sp ? 340 + Math.random() * 260 : 1400) }
+                    hang(); stt.textContent = 'Call ended, 00:' + ('0' + (lines.length * 4 + 3)).slice(-2); wr.classList.remove('live'); jn.querySelectorAll('.plpp').forEach(function (x) { x.classList.remove('talk') }); fin(0); fin(1); await sleep(1100);
                     st(2, 'on', 1); st(2, 'vib', 1); jn.innerHTML = '<div class="plsc"><div class="plstt"><span class="plspin"></span>LLM is processing the call...</div><ul class="plex" id="plex"></ul><div class="pltr" id="pltr"></div></div>';
-                    var ex = document.getElementById('plex'), tb = document.getElementById('pltr'), F = [['language', d.language], ['intent', d.intent], ['sentiment', d.sentiment], ['escalation_required', d.escalation_required], ['reason_for_non_payment', d.reason_for_non_payment], ['summary', 'generated']];
+                    var ex = document.getElementById('plex'), tb = document.getElementById('pltr'), F = [['language', d.language], ['intent', d.intent], ['sentiment', d.sentiment], ['callback_requested', d.callback_requested], ['reason_for_non_payment', d.reason_for_non_payment], ['summary', 'generated']];
                     for (var j = 0; j < F.length; j++) { var li = document.createElement('li'); li.innerHTML = '<b>&#10003;</b>'; li.appendChild(document.createTextNode(F[j][0] + ': ' + F[j][1])); ex.appendChild(li); await sleep(380) }
-                    var h = document.createElement('h6'); h.textContent = 'Transcript (' + d.language + ')'; tb.appendChild(h); jn.scrollTop = jn.scrollHeight;
-                    for (var q = 0; q < dialogueTranscript.length; q++) { var tl = document.createElement('div'); tl.className = 'pltl'; tl.textContent = dialogueTranscript[q]; tb.appendChild(tl); jn.scrollTop = jn.scrollHeight; await sleep(320) }
+                    var h = document.createElement('h6'); h.textContent = en ? 'Transcript' : 'Transcript (' + d.language + ') with English translation'; tb.appendChild(h); jn.scrollTop = jn.scrollHeight;
+                    for (var q = 0; q < lines.length; q++) { var tl = document.createElement('div'); tl.className = 'pltl'; var who = document.createElement('b'); who.textContent = (q % 2 ? 'User: ' : 'Agent: '); tl.appendChild(who); tl.appendChild(document.createTextNode(lines[q])); if (!en) { var sp2 = document.createElement('span'); sp2.textContent = '(' + pz.en[q] + ')'; tl.appendChild(sp2) } tb.appendChild(tl); jn.scrollTop = jn.scrollHeight; await sleep(420) }
                     await sleep(500); fin(2);
                     st(3, 'on', 1); st(3, 'vib', 1); jn.innerHTML = '<div class="plsc"><svg class="plbin" width="160" height="150" viewBox="0 0 160 150" aria-hidden="true"><g class="cd"><rect x="62" y="20" width="36" height="28" rx="5" fill="#f26a21"/><text x="80" y="40" text-anchor="middle" font-size="16" font-weight="700" fill="#fff" font-family="ui-monospace,monospace">{ }</text></g><g fill="none" stroke="#fff" stroke-width="2.5" opacity=".85"><ellipse cx="80" cy="96" rx="44" ry="12"/><path d="M36 96v28c0 7 20 13 44 13s44-6 44-13V96"/><path d="M36 110c0 7 20 13 44 13s44-6 44-13" opacity=".5"/></g></svg><div class="plstt">Storing the record in PostgreSQL...</div></div>';
                     await sleep(2400); fin(3); cnt++; evn.textContent = cnt;
@@ -4131,7 +3619,7 @@
                     function showJ() { clearInterval(typer); clearTimeout(dt); out.innerHTML = '<div class="pjw"><button type="button" class="pjc" id="pjc" title="Copy JSON" aria-label="Copy JSON"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button><pre class="pljs" id="pljs"></pre></div>'; document.getElementById('pjc').addEventListener('click', function () { cp(this) }); var pj = document.getElementById('pljs'), z = 0; typer = setInterval(function () { z += 14; pj.textContent = js.slice(0, z); if (z >= js.length) clearInterval(typer) }, 14) }
                     function showC() { clearInterval(typer); clearTimeout(dt); var h = '<div class="pltb"><table><tr>' + ks.map(function (k) { return '<th>' + k + '</th>' }).join('') + '</tr><tr>' + ks.map(function (k) { var v = d[k]; return '<td' + (/transcript/.test(k) ? ' class="wd"' : '') + '></td>' }).join('') + '</tr></table></div>'; out.innerHTML = h; var tds = out.querySelectorAll('td'); ks.forEach(function (k, i) { tds[i].textContent = d[k] === null ? '' : String(d[k]) }) }
                     function showD(an) { clearInterval(typer); clearTimeout(dt); out.innerHTML = '<div class="pdb" id="pdb"></div>'; var bx = document.getElementById('pdb'); if (an) { bx.innerHTML = dashHTML(cnt - 1, false, false, d); dt = setTimeout(function () { bx.innerHTML = dashHTML(cnt, true, true, d) }, 1100) } else bx.innerHTML = dashHTML(cnt, false, true, d); jn.scrollTop = 0 }
-                    function cp(bt) { var done = function () { bt.innerHTML = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l5 5 9-10"/></svg>'; bt.classList.add('ok'); bt.title = 'Copied'; setTimeout(function () { bt.innerHTML = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>'; bt.classList.remove('ok'); bt.title = 'Copy JSON' }, 1600) }; function fb() { var t = document.createElement('textarea'); t.value = js; t.style.cssText = 'position:fixed;opacity:0'; document.body.appendChild(t); t.select(); try { document.execCommand('copy'); done() } catch (e) { } t.remove() } if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(js).then(done, fb); else fb() }
+                    function cp(bt) { var done = function () { bt.innerHTML = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l5 5 9-10"/></svg>'; bt.classList.add('ok'); bt.title = 'Copied'; setTimeout(function () { bt.innerHTML = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>'; bt.classList.remove('ok'); bt.title = 'Copy JSON' }, 1600) }; function fb() { var t = document.createElement('textarea'); t.value = js; t.style.cssText = 'position:fixed;opacity:0'; document.body.appendChild(t); t.select(); try { document.execCommand('copy'); done() } catch (e) { } t.remove() } if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(js).then(done, fb); else fb() }
                     function dl() { var bl = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' }), a = document.createElement('a'); a.href = URL.createObjectURL(bl); a.download = 'call_' + d.id + '.csv'; document.body.appendChild(a); a.click(); a.remove(); setTimeout(function () { URL.revokeObjectURL(a.href) }, 1000) }
                     vw.addEventListener('click', function (e) { var bt = e.target.closest('button'); if (!bt) return; var v = bt.dataset.v; if (v === 'd') { dl(); return } vw.querySelectorAll('button').forEach(function (x) { x.classList.toggle('on', x === bt) }); if (v === 'b') showD(false); else if (v === 'j') showJ(); else showC() });
                     showD(true)
