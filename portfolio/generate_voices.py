@@ -17,7 +17,10 @@ Two sets are generated per language:
 Re-run this script whenever you change the call lines.
 """
 import asyncio, pathlib, re, shutil, subprocess, sys
-import edge_tts
+try:
+    import edge_tts
+except ImportError:  # only needed for the Edge engine; the Hugging Face engine does not use it
+    edge_tts = None
 
 # language -> (agent voice, customer voice)
 VOICES = {
@@ -30,157 +33,80 @@ VOICES = {
     # "or" (Odia): Edge TTS has no Odia voice. The demo falls back to captions only.
 }
 
-def get_style(voice: str) -> dict:
-    # Female voices need natural -2% rate to prevent robotic time-stretching artifacts
-    is_female = any(name in voice for name in ["Shruti", "Neerja", "Pallavi", "Sobhana", "Dhwani", "Sapna"])
-    if is_female:
-        return {"rate": "-2%", "pitch": "+0Hz"}
-    return {"rate": "-4%", "pitch": "+0Hz"}
-
-STYLE = {"agent": {"rate": "-2%", "pitch": "+0Hz"}, "customer": {"rate": "-2%", "pitch": "+0Hz"}}
+# Phone-call pacing: slightly slower than the default read-aloud speed, customer a touch more relaxed.
+# Rate only - pitch shifting is what makes neural voices sound processed, so pitch stays at 0.
+# If it still feels fast/slow, change these two numbers (e.g. "-8%" slower, "+0%" default).
+STYLE = {"agent": {"rate": "-4%", "pitch": "+0Hz"}, "customer": {"rate": "-7%", "pitch": "+0Hz"}}
 
 LINES = {
     "en": [
-        "Hello Mr. Praveen, this is Samvaad calling about your loan EMI.",
+        "Hello, this is Samvaad calling about your loan EMI.",
         "Yes, please go ahead.",
-        "Mr. Praveen, your EMI of INR 12,500 was due on 20 September.",
+        "Your EMI of INR 12,500 was due on 20 September.",
         "Yes, my salary came late this month.",
-        "I understand, Mr. Praveen. When can you make the payment?",
+        "I understand. When can you make the payment?",
         "I will pay the full amount of INR 12,500 by 7 October.",
-        "Thank you, Mr. Praveen. I have noted the full payment of INR 12,500 by 7 October.",
+        "Thank you. I have noted the full payment of INR 12,500 by 7 October.",
         "Okay, thank you."
     ],
     "ta": [
-        "வணக்கம் பிரவீன் அவர்களே, நான் சம்வாத் அழைக்கிறேன், உங்கள் கடன் EMI பற்றி.",
+        "வணக்கம், நான் சம்வாத் அழைக்கிறேன், உங்கள் கடன் EMI பற்றி.",
         "ஆமாம், சொல்லுங்கள்.",
-        "பிரவீன் அவர்களே, உங்கள் ₹12,500 EMI செப்டம்பர் 20 அன்று செலுத்த வேண்டியது.",
+        "உங்கள் ₹12,500 EMI செப்டம்பர் 20 அன்று செலுத்த வேண்டியது.",
         "ஆமாம், இந்த மாதம் சம்பளம் தாமதமாக வந்தது.",
-        "புரிகிறது, பிரவீன் அவர்களே. எப்போது செலுத்த முடியும்?",
+        "புரிகிறது. எப்போது செலுத்த முடியும்?",
         "அக்டோபர் 7க்குள் முழுத் தொகையான ₹12,500 செலுத்துகிறேன்.",
-        "நன்றி, பிரவீன் அவர்களே. அக்டோபர் 7க்குள் ₹12,500 முழுத் தொகை செலுத்துவதாகக் குறித்துக்கொண்டேன்.",
+        "நன்றி. அக்டோபர் 7க்குள் ₹12,500 முழுத் தொகை செலுத்துவதாகக் குறித்துக்கொண்டேன்.",
         "சரி, நன்றி."
     ],
     "te": [
-        "నమస్కారం ప్రవీణ్ గారు, నేను సంవాద్ నుండి మాట్లాడుతున్నాను, మీ లోన్ EMI గురించి.",
+        "నమస్కారం, నేను సంవాద్ నుండి మాట్లాడుతున్నాను, మీ లోన్ EMI గురించి.",
         "అవును, చెప్పండి.",
-        "ప్రవీణ్ గారు, మీ ₹12,500 EMI సెప్టెంబర్ 20 న చెల్లించాల్సి ఉంది.",
+        "మీ ₹12,500 EMI సెప్టెంబర్ 20 న చెల్లించాల్సి ఉంది.",
         "అవును, ఈ నెల జీతం ఆలస్యంగా వచ్చింది.",
-        "అర్థమైంది, ప్రవీణ్ గారు. ఎప్పుడు చెల్లించగలరు?",
+        "అర్థమైంది. ఎప్పుడు చెల్లించగలరు?",
         "అక్టోబర్ 7 లోపు పూర్తి మొత్తం ₹12,500 చెల్లిస్తాను.",
-        "ధన్యవాదాలు, ప్రవీణ్ గారు. అక్టోబర్ 7 లోపు పూర్తి మొత్తం ₹12,500 చెల్లింపు నమోదు చేశాను.",
+        "ధన్యవాదాలు. అక్టోబర్ 7 లోపు పూర్తి మొత్తం ₹12,500 చెల్లింపు నమోదు చేశాను.",
         "సరే, ధన్యవాదాలు."
     ],
     "ml": [
-        "നമസ്കാരം ശ്രീ പ്രവീൺ, ഞാൻ സംവാദിൽ നിന്നാണ് വിളിക്കുന്നത്, നിങ്ങളുടെ വായ്പ EMI സംബന്ധിച്ച്.",
+        "നമസ്കാരം, ഞാൻ സംവാദിൽ നിന്നാണ് വിളിക്കുന്നത്, നിങ്ങളുടെ വായ്പ EMI സംബന്ധിച്ച്.",
         "ശരി, പറയൂ.",
-        "ശ്രീ പ്രവീൺ, നിങ്ങളുടെ ₹12,500 EMI സെപ്റ്റംബർ 20-ന് അടയ്ക്കേണ്ടതായിരുന്നു.",
+        "നിങ്ങളുടെ ₹12,500 EMI സെപ്റ്റംബർ 20-ന് അടയ്ക്കേണ്ടതായിരുന്നു.",
         "അതെ, ഈ മാസം ശമ്പളം വൈകിയാണ് കിട്ടിയത്.",
-        "മനസ്സിലായി, ശ്രീ പ്രവീൺ. എപ്പോൾ അടയ്ക്കാൻ കഴിയും?",
+        "മനസ്സിലായി. എപ്പോൾ അടയ്ക്കാൻ കഴിയും?",
         "ഒക്ടോബർ 7-നകം മുഴുവൻ തുകയായ ₹12,500 അടയ്ക്കാം.",
-        "നന്ദി, ശ്രീ പ്രവീൺ. ഒക്ടോബർ 7-നകം ₹12,500 മുഴുവൻ തുകയും അടയ്ക്കുമെന്ന് രേഖപ്പെടുത്തി.",
+        "നന്ദി. ഒക്ടോബർ 7-നകം ₹12,500 മുഴുവൻ തുകയും അടയ്ക്കുമെന്ന് രേഖപ്പെടുത്തി.",
         "ശരി, നന്ദി."
     ],
     "gu": [
-        "નમસ્તે શ્રી પ્રવીણ, હું સંવાદમાંથી બોલું છું, તમારી લોન EMI વિશે.",
+        "નમસ્તે, હું સંવાદમાંથી બોલું છું, તમારી લોન EMI વિશે.",
         "હા, બોલો.",
-        "શ્રી પ્રવીણ, તમારી ₹12,500 ની EMI 20 સપ્ટેમ્બરે ભરવાની હતી.",
+        "તમારી ₹12,500 ની EMI 20 સપ્ટેમ્બરે ભરવાની હતી.",
         "હા, આ મહિને પગાર મોડો આવ્યો.",
-        "સમજાયું, શ્રી પ્રવીણ. તમે ક્યારે ચૂકવણી કરી શકશો?",
+        "સમજાયું. તમે ક્યારે ચૂકવણી કરી શકશો?",
         "7 ઓક્ટોબર સુધીમાં પૂરી રકમ ₹12,500 ભરી દઈશ.",
-        "આભાર, શ્રી પ્રવીણ. 7 ઓક્ટોબર સુધીમાં પૂરી ₹12,500 ની ચુકવણી નોંધાઈ ગઈ છે.",
+        "આભાર. 7 ઓક્ટોબર સુધીમાં પૂરી ₹12,500 ની ચુકવણી નોંધાઈ ગઈ છે.",
         "સારું, આભાર."
     ],
     "or": [
-        "ନମସ୍କାର ଶ୍ରୀ ପ୍ରବୀଣ, ମୁଁ ସଂବାଦରୁ କହୁଛି, ଆପଣଙ୍କ ଲୋନ୍ EMI ବିଷୟରେ।",
+        "ନମସ୍କାର, ମୁଁ ସଂବାଦରୁ କହୁଛି, ଆପଣଙ୍କ ଲୋନ୍ EMI ବିଷୟରେ।",
         "ହଁ, କୁହନ୍ତୁ।",
-        "ଶ୍ରୀ ପ୍ରବୀଣ, ଆପଣଙ୍କ ₹12,500 EMI ସେପ୍ଟେମ୍ବର 20 ରେ ଦେୟ ଥିଲା।",
+        "ଆପଣଙ୍କ ₹12,500 EMI ସେପ୍ଟେମ୍ବର 20 ରେ ଦେୟ ଥିଲା।",
         "ହଁ, ଏହି ମାସ ଦରମା ଡେରିରେ ଆସିଲା।",
-        "ବୁଝିଲି, ଶ୍ରୀ ପ୍ରବୀଣ। ଆପଣ କେବେ ଦେଇପାରିବେ?",
+        "ବୁଝିଲି। ଆପଣ କେବେ ଦେଇପାରିବେ?",
         "ଅକ୍ଟୋବର 7 ସୁଦ୍ଧା ପୂରା ରାଶି ₹12,500 ଦେବି।",
-        "ଧନ୍ୟବାଦ, ଶ୍ରୀ ପ୍ରବୀଣ। ଅକ୍ଟୋବର 7 ସୁଦ୍ଧା ପୂରା ₹12,500 ଦେୟ ଲେଖିନେଲି।",
+        "ଧନ୍ୟବାଦ। ଅକ୍ଟୋବର 7 ସୁଦ୍ଧା ପୂରା ₹12,500 ଦେୟ ଲେଖିନେଲି।",
         "ଠିକ୍ ଅଛି, ଧନ୍ୟବାଦ।"
     ],
     "kn": [
-        "ನಮಸ್ಕಾರ ಪ್ರವೀಣ್ ಅವರೇ, ನಾನು ಸಂವಾದ್‌ನಿಂದ ಕರೆ ಮಾಡುತ್ತಿದ್ದೇನೆ, ನಿಮ್ಮ ಸಾಲದ EMI ಬಗ್ಗೆ.",
+        "ನಮಸ್ಕಾರ, ನಾನು ಸಂವಾದ್‌ನಿಂದ ಕರೆ ಮಾಡುತ್ತಿದ್ದೇನೆ, ನಿಮ್ಮ ಸಾಲದ EMI ಬಗ್ಗೆ.",
         "ಹೌದು, ಹೇಳಿ.",
-        "ಪ್ರವೀಣ್ ಅವರೇ, ನಿಮ್ಮ ₹12,500 EMI ಸೆಪ್ಟೆಂಬರ್ 20 ರಂದು ಪಾವತಿಸಬೇಕಿತ್ತು.",
+        "ನಿಮ್ಮ ₹12,500 EMI ಸೆಪ್ಟೆಂಬರ್ 20 ರಂದು ಪಾವತಿಸಬೇಕಿತ್ತು.",
         "ಹೌದು, ಈ ತಿಂಗಳು ಸಂಬಳ ತಡವಾಗಿ ಬಂತು.",
-        "ಅರ್ಥವಾಯಿತು, ಪ್ರವೀಣ್ ಅವರೇ. ನೀವು ಯಾವಾಗ ಪಾವತಿಸಬಹುದು?",
+        "ಅರ್ಥವಾಯಿತು. ನೀವು ಯಾವಾಗ ಪಾವತಿಸಬಹುದು?",
         "ಅಕ್ಟೋಬರ್ 7 ರೊಳಗೆ ಪೂರ್ಣ ಮೊತ್ತ ₹12,500 ಪಾವತಿಸುತ್ತೇನೆ.",
-        "ಧನ್ಯವಾದಗಳು, ಪ್ರವೀಣ್ ಅವರೇ. ಅಕ್ಟೋಬರ್ 7 ರೊಳಗೆ ಪೂರ್ಣ ಮೊತ್ತ ₹12,500 ಪಾವತಿಯನ್ನು ದಾಖಲಿಸಿದ್ದೇನೆ.",
-        "ಸರಿ, ಧನ್ಯವಾದಗಳು."
-    ]
-}
-
-LINES_FC = {
-    "en": [
-        "Hello Ms. Priya, this is Samvaad calling about your loan EMI.",
-        "Yes, please go ahead.",
-        "Ms. Priya, your EMI of INR 12,500 was due on 20 September.",
-        "Yes, my salary came late this month.",
-        "I understand, Ms. Priya. When can you make the payment?",
-        "I will pay the full amount of INR 12,500 by 7 October.",
-        "Thank you, Ms. Priya. I have noted the full payment of INR 12,500 by 7 October.",
-        "Okay, thank you."
-    ],
-    "ta": [
-        "வணக்கம் பிரியா அவர்களே, நான் சம்வாத் அழைக்கிறேன், உங்கள் கடன் EMI பற்றி.",
-        "ஆமாம், சொல்லுங்கள்.",
-        "பிரியா அவர்களே, உங்கள் ₹12,500 EMI செப்டம்பர் 20 அன்று செலுத்த வேண்டியது.",
-        "ஆமாம், இந்த மாதம் சம்பளம் தாமதமாக வந்தது.",
-        "புரிகிறது, பிரியா அவர்களே. எப்போது செலுத்த முடியும்?",
-        "அக்டோபர் 7க்குள் முழுத் தொகையான ₹12,500 செலுத்துகிறேன்.",
-        "நன்றி, பிரியா அவர்களே. அக்டோபர் 7க்குள் ₹12,500 முழுத் தொகை செலுத்துவதாகக் குறித்துக்கொண்டேன்.",
-        "சரி, நன்றி."
-    ],
-    "te": [
-        "నమస్కారం ప్రియ గారు, నేను సంవాద్ నుండి మాట్లాడుతున్నాను, మీ లోన్ EMI గురించి.",
-        "అవును, చెప్పండి.",
-        "ప్రియ గారు, మీ ₹12,500 EMI సెప్టెంబర్ 20 న చెల్లించాల్సి ఉంది.",
-        "అవును, ఈ నెల జీతం ఆలస్యంగా వచ్చింది.",
-        "అర్థమైంది, ప్రియ గారు. ఎప్పుడు చెల్లించగలరు?",
-        "అక్టోబర్ 7 లోపు పూర్తి మొత్తం ₹12,500 చెల్లిస్తాను.",
-        "ధన్యవాదాలు, ప్రియ గారు. అక్టోబర్ 7 లోపు పూర్తి మొత్తం ₹12,500 చెల్లింపు నమోదు చేశాను.",
-        "సరే, ధన్యవాదాలు."
-    ],
-    "ml": [
-        "നമസ്കാരം ശ്രീമതി പ്രിയ, ഞാൻ സംവാദിൽ നിന്നാണ് വിളിക്കുന്നത്, നിങ്ങളുടെ വായ്പ EMI സംബന്ധിച്ച്.",
-        "ശരി, പറയൂ.",
-        "ശ്രീമതി പ്രിയ, നിങ്ങളുടെ ₹12,500 EMI സെപ്റ്റംബർ 20-ന് അടയ്ക്കേണ്ടതായിരുന്നു.",
-        "അതെ, ഈ മാസം ശമ്പളം വൈകിയാണ് കിട്ടിയത്.",
-        "മനസ്സിലായി, ശ്രീമതി പ്രിയ. എപ്പോൾ അടയ്ക്കാൻ കഴിയും?",
-        "ഒക്ടോബർ 7-നകം മുഴുവൻ തുകയായ ₹12,500 അടയ്ക്കാം.",
-        "നന്ദി, ശ്രീമതി പ്രിയ. ഒക്ടോബർ 7-നകം ₹12,500 മുഴുവൻ തുകയും അടയ്ക്കുമെന്ന് രേഖപ്പെടുത്തി.",
-        "ശരി, നന്ദി."
-    ],
-    "gu": [
-        "નમસ્તે શ્રીમતી પ્રિયા, હું સંવાદમાંથી બોલું છું, તમારી લોન EMI વિશે.",
-        "હા, બોલો.",
-        "શ્રીમતી પ્રિયા, તમારી ₹12,500 ની EMI 20 સપ્ટેમ્બરે ભરવાની હતી.",
-        "હા, આ મહિને પગાર મોડો આવ્યો.",
-        "સમજાયું, શ્રીમતી પ્રિયા. તમે ક્યારે ચૂકવણી કરી શકશો?",
-        "7 ઓક્ટોબર સુધીમાં પૂરી રકમ ₹12,500 ભરી દઈશ.",
-        "આભાર, શ્રીમતી પ્રિયા. 7 ઓક્ટોબર સુધીમાં પૂરી ₹12,500 ની ચુકવણી નોંધાઈ ગઈ છે.",
-        "સારું, આભાર."
-    ],
-    "or": [
-        "ନମସ୍କାର ଶ୍ରୀମତୀ ପ୍ରିୟା, ମୁଁ ସଂବାଦରୁ କହୁଛି, ଆପଣଙ୍କ ଲୋନ୍ EMI ବିଷୟରେ।",
-        "ହଁ, କୁହନ୍ତୁ।",
-        "ଶ୍ରୀମତୀ ପ୍ରିୟା, ଆପଣଙ୍କ ₹12,500 EMI ସେପ୍ଟେମ୍ବର 20 ରେ ଦେୟ ଥିଲା।",
-        "ହଁ, ଏହି ମାସ ଦରମା ଡେରିରେ ଆସିଲା।",
-        "ବୁଝିଲି, ଶ୍ରୀମତୀ ପ୍ରିୟା। ଆପଣ କେବେ ଦେଇପାରିବେ?",
-        "ଅକ୍ଟୋବର 7 ସୁଦ୍ଧା ପୂରା ରାଶି ₹12,500 ଦେବି।",
-        "ଧନ୍ୟବାଦ, ଶ୍ରୀମତୀ ପ୍ରିୟା। ଅକ୍ଟୋବର 7 ସୁଦ୍ଧା ପୂରା ₹12,500 ଦେୟ ଲେଖିନେଲି।",
-        "ଠିକ୍ ଅଛି, ଧନ୍ୟବାଦ।"
-    ],
-    "kn": [
-        "ನಮಸ್ಕಾರ ಪ್ರಿಯಾ ಅವರೇ, ನಾನು ಸಂವಾದ್‌ನಿಂದ ಕರೆ ಮಾಡುತ್ತಿದ್ದೇನೆ, ನಿಮ್ಮ ಸಾಲದ EMI ಬಗ್ಗೆ.",
-        "ಹೌದು, ಹೇಳಿ.",
-        "ಪ್ರಿಯಾ ಅವರೇ, ನಿಮ್ಮ ₹12,500 EMI ಸೆಪ್ಟೆಂಬರ್ 20 ರಂದು ಪಾವತಿಸಬೇಕಿತ್ತು.",
-        "ಹೌದು, ಈ ತಿಂಗಳು ಸಂಬಳ ತಡವಾಗಿ ಬಂತು.",
-        "ಅರ್ಥವಾಯಿತು, ಪ್ರಿಯಾ ಅವರೇ. ನೀವು ಯಾವಾಗ ಪಾವತಿಸಬಹುದು?",
-        "ಅಕ್ಟೋಬರ್ 7 ರೊಳಗೆ ಪೂರ್ಣ ಮೊತ್ತ ₹12,500 ಪಾವತಿಸುತ್ತೇನೆ.",
-        "ಧನ್ಯವಾದಗಳು, ಪ್ರಿಯಾ ಅವರೇ. ಅಕ್ಟೋಬರ್ 7 ರೊಳಗೆ ಪೂರ್ಣ ಮೊತ್ತ ₹12,500 ಪಾವತಿಯನ್ನು ದಾಖಲಿಸಿದ್ದೇನೆ.",
+        "ಧನ್ಯವಾದಗಳು. ಅಕ್ಟೋಬರ್ 7 ರೊಳಗೆ ಪೂರ್ಣ ಮೊತ್ತ ₹12,500 ಪಾವತಿಯನ್ನು ದಾಖಲಿಸಿದ್ದೇನೆ.",
         "ಸರಿ, ಧನ್ಯವಾದಗಳು."
     ]
 }
@@ -208,23 +134,17 @@ def get_tts_text(lang, text):
 # ---- optional polish with ffmpeg: trim Edge's leading/trailing silence and even out loudness,
 # so both speakers sit at the same volume and turns follow each other like a real call.
 FFMPEG = shutil.which("ffmpeg")
-if not FFMPEG:
-    try:
-        import imageio_ffmpeg
-        FFMPEG = imageio_ffmpeg.get_ffmpeg_exe()
-    except Exception:
-        FFMPEG = None
 POLISH = ("silenceremove=start_periods=1:start_threshold=-50dB:start_silence=0.04,"
           "areverse,silenceremove=start_periods=1:start_threshold=-50dB:start_silence=0.10,areverse,"
           "loudnorm=I=-18:TP=-2:LRA=9")
 
 
-def polish(data: bytes) -> bytes:
+def polish(data: bytes, ar: int = 24000, br: str = "64k") -> bytes:
     if not FFMPEG or not data:
         return data
     try:
         r = subprocess.run([FFMPEG, "-loglevel", "error", "-i", "pipe:0", "-af", POLISH,
-                            "-ar", "24000", "-ac", "1", "-b:a", "64k", "-f", "mp3", "pipe:1"],
+                            "-ar", str(ar), "-ac", "1", "-b:a", br, "-f", "mp3", "pipe:1"],
                            input=data, capture_output=True, timeout=30)
         return r.stdout if r.returncode == 0 and len(r.stdout) > 1000 else data
     except Exception:
@@ -241,7 +161,7 @@ async def synth(sem, lang, i, text, voice, role, sub=""):
     async with sem:
         for _ in range(3):
             try:
-                st = get_style(voice)
+                st = STYLE[role]
                 await edge_tts.Communicate(spoken_text, voice, rate=st["rate"], pitch=st["pitch"]).save(str(path))
                 if path.stat().st_size > 0:
                     path.write_bytes(await asyncio.to_thread(polish, path.read_bytes()))
@@ -254,114 +174,9 @@ async def synth(sem, lang, i, text, voice, role, sub=""):
     return False
 
 
-PRE_GEN_NAMES = {
-    "bhavana": ("F", {
-        "en": "Ms. Bhavana",
-        "te": "భావన గారు",
-        "ta": "பாவனா அவர்களே",
-        "ml": "ശ്രീമതി ഭാവന",
-        "gu": "શ્રીમતી ભાવના",
-        "kn": "ಭಾವನಾ ಅವರೇ"
-    }),
-    "bhavani": ("F", {
-        "en": "Ms. Bhavani",
-        "te": "భవాని గారు",
-        "ta": "பவானி அவர்களே",
-        "ml": "ശ്രീമതി ഭവാനി",
-        "gu": "શ્રીમતી ભવાની",
-        "kn": "ಭವಾನಿ ಅವರೇ"
-    }),
-    "divya": ("F", {
-        "en": "Ms. Divya",
-        "te": "దివ్య గారు",
-        "ta": "திவ்யா அவர்களே",
-        "ml": "ശ്രീമതി ദിവ്യ",
-        "gu": "શ્રીમતી દિવ્યા",
-        "kn": "ದಿವ್ಯ ಅವರೇ"
-    }),
-    "sneha": ("F", {
-        "en": "Ms. Sneha",
-        "te": "స్నేహ గారు",
-        "ta": "ஸ்நேகா அவர்களே",
-        "ml": "ശ്രീമതി സ്നേഹ",
-        "gu": "શ્રીમતી સ્નેહા",
-        "kn": "ಸ್ನೇಹ ಅವರೇ"
-    }),
-    "kavya": ("F", {
-        "en": "Ms. Kavya",
-        "te": "కావ్య గారు",
-        "ta": "காவ்யா அவர்களே",
-        "ml": "ശ്രീമതി കാവ്യ",
-        "gu": "શ્રીમતી કાવ્યા",
-        "kn": "ಕಾವ್ಯ ಅವರೇ"
-    }),
-    "anitha": ("F", {
-        "en": "Ms. Anitha",
-        "te": "అనిత గారు",
-        "ta": "அனிதா அவர்களே",
-        "ml": "ശ്രീമതി അനിത",
-        "gu": "શ્રીમતી અનિતા",
-        "kn": "ಅನಿತಾ ಅವರೇ"
-    }),
-    "swathi": ("F", {
-        "en": "Ms. Swathi",
-        "te": "స్వాతి గారు",
-        "ta": "சுவாதி அவர்களே",
-        "ml": "ശ്രീമതി స్వాതി",
-        "gu": "શ્રીમતી સ્વાતિ",
-        "kn": "ಸ್ವಾತಿ ಅವರೇ"
-    }),
-    "deepika": ("F", {
-        "en": "Ms. Deepika",
-        "te": "దీపిక గారు",
-        "ta": "தீபிகா அவர்களே",
-        "ml": "ശ്രീമതി ദീപിക",
-        "gu": "શ્રીમતી દીપિકા",
-        "kn": "ದೀಪಿಕಾ ಅವರೇ"
-    }),
-    "rahul": ("M", {
-        "en": "Mr. Rahul",
-        "te": "రాహుల్ గారు",
-        "ta": "ராகுல் அவர்களே",
-        "ml": "ശ്രീ രാഹുൽ",
-        "gu": "શ્રી રાહુલ",
-        "kn": "ರಾಹುಲ್ ಅವರೇ"
-    }),
-    "suresh": ("M", {
-        "en": "Mr. Suresh",
-        "te": "సురేష్ గారు",
-        "ta": "சுரேஷ் அவர்களே",
-        "ml": "ശ്രീ സുരേഷ്",
-        "gu": "શ્રી સુરેશ",
-        "kn": "ಸುರೇಶ್ ಅವರೇ"
-    }),
-    "ramesh": ("M", {
-        "en": "Mr. Ramesh",
-        "te": "రమేష్ గారు",
-        "ta": "ரமேஷ் அவர்களே",
-        "ml": "ശ്രീ రమేష్",
-        "gu": "શ્રી రமேશ",
-        "kn": "ರಮೇಶ್ ಅವರೇ"
-    }),
-    "anil": ("M", {
-        "en": "Mr. Anil",
-        "te": "అనిల్ గారు",
-        "ta": "அனில் அவர்களே",
-        "ml": "ശ്രീ അനിൽ",
-        "gu": "શ્રી અનિલ",
-        "kn": "ಅನಿಲ್ ಅವರೇ"
-    })
-}
-
-DEF_NAMES_GEN = {
-    "M": { "en": "Mr. Praveen", "te": "ప్రవీణ్ గారు", "ta": "பிரவீன் அவர்களே", "ml": "ശ്രീ പ്രവീൺ", "gu": "શ્રી પ્રવીણ", "kn": "ಪ್ರವೀಣ್ ಅವರೇ" },
-    "F": { "en": "Ms. Priya", "te": "ప్రియ గారు", "ta": "பிரியா அவர்களே", "ml": "ശ്രീമതി Priya".replace("Priya", "ప్రియ"), "gu": "શ્રીમતી પ્રિયા", "kn": "ಪ್ರಿಯಾ ಅವರೇ" }
-}
-DEF_NAMES_GEN["F"]["ml"] = "ശ്രീമതി പ്രിയ"
-DEF_NAMES_GEN["F"]["te"] = "ప్రియ గారు"
-
-
 async def main(langs):
+    if edge_tts is None:
+        sys.exit("edge-tts is not installed (pip install edge-tts). For the Hugging Face voices use generate_voices_hf.py")
     if not FFMPEG:
         print("note: ffmpeg not found - clips keep Edge's silence padding and uneven loudness "
               "(install ffmpeg and re-run for a more natural result)\n")
@@ -379,23 +194,8 @@ async def main(langs):
         for i, text in enumerate(LINES[lang]):
             role = "agent" if i % 2 == 0 else "customer"
             jobs.append(synth(sem, lang, i, text, agent if role == "agent" else cust, role))
-            # female customer set (Priya): male agent, female customer
-            text_fc = LINES_FC[lang][i] if lang in LINES_FC else text
-            jobs.append(synth(sem, lang, i, text_fc, cust if role == "agent" else agent, role, "fc"))
-
-        # Pre-render common demo names so they are 100% human neural voice with 0 lag
-        for name_key, (gender, name_map) in PRE_GEN_NAMES.items():
-            if lang not in name_map:
-                continue
-            name_addr = name_map[lang]
-            base_lines = LINES_FC[lang] if gender == "F" else LINES[lang]
-            def_addr = DEF_NAMES_GEN["F"][lang] if gender == "F" else DEF_NAMES_GEN["M"][lang]
-            # Agent voice: if customer is female, agent is male (cust); if customer is male, agent is female (agent)
-            agent_voice = cust if gender == "F" else agent
-            for i in [0, 2, 4, 6]:
-                line_text = base_lines[i].replace(def_addr, name_addr)
-                jobs.append(synth(sem, lang, i, line_text, agent_voice, "agent", f"names/{name_key}"))
-
+            # swapped set for a female customer: male agent, female customer
+            jobs.append(synth(sem, lang, i, text, cust if role == "agent" else agent, role, "fc"))
     res = await asyncio.gather(*jobs)
     print(f"\nDone: {sum(res)}/{len(res)} clips in {OUT}")
 
