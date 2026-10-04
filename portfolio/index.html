@@ -3788,8 +3788,26 @@
                 var u = await Promise.race([PC[k], sleep(TTS_WAIT).then(function () { return null })]);
                 return u ? playSrc(u) : false
             }
-            async function speakDynamic(t, ag, l) {
+            var REPLY_CACHE = {};
+            function prefetchReplies(L, nm) {
+                REPLY_CACHE = {};
+                if (!TTS_ENDPOINT || !snd) return;
+                var cfg = INTENTS[L] || INTENTS.en;
+                ['refusal', 'dispute', 'promise'].forEach(function (intKey) {
+                    var text = (cfg[intKey] || cfg.promise).replace('{n}', nm);
+                    var u = TTS_ENDPOINT + (TTS_ENDPOINT.indexOf('?') < 0 ? '?' : '&') + 'lang=' + L + '&role=agent&alt=0&text=' + encodeURIComponent(text);
+                    REPLY_CACHE[intKey] = fetchTTS(u);
+                });
+            }
+            async function speakDynamic(t, ag, l, intKey) {
                 if (!snd) return false;
+                if (intKey && REPLY_CACHE[intKey]) {
+                    var cachedBlob = await Promise.race([REPLY_CACHE[intKey], sleep(3500).then(function () { return null })]);
+                    if (cachedBlob) {
+                        var ok = await playSrc(cachedBlob);
+                        if (ok) return true;
+                    }
+                }
                 if (TTS_ENDPOINT) {
                     var role = ag ? 'agent' : 'customer';
                     var u = TTS_ENDPOINT + (TTS_ENDPOINT.indexOf('?') < 0 ? '?' : '&') + 'lang=' + l + '&role=' + role + '&alt=' + (fcm ? 1 : 0) + '&text=' + encodeURIComponent(t);
@@ -3859,12 +3877,20 @@
 
                     if (callMode === 'interactive') {
                         /* ---- Live Interactive Turn 0 (Agent Opening) ---- */
-                        var agLine0 = lines[0] + ' ' + (pcur === 'en' ? 'Your EMI of INR 12,500 was due on 20 September. When can you make the payment?' : (pcur === 'te' ? 'మీ ₹12,500 EMI సెప్టెంబర్ 20 న చెల్లించాల్సి ఉంది. ఎప్పుడు చెల్లించగలరు?' : lines[2] + ' ' + lines[4]));
-                        var b0 = document.createElement('div'); b0.className = 'plbb ag'; b0.innerHTML = '<em>Agent</em>'; b0.appendChild(document.createTextNode(agLine0)); cv.appendChild(b0); jn.scrollTop = jn.scrollHeight;
+                        var addrName = addrFor(pcur, xlit(pz.name || (pcur === 'te' ? 'గారు' : 'Customer'), pcur));
+                        prefetchReplies(pcur, addrName);
+
+                        var b0 = document.createElement('div'); b0.className = 'plbb ag'; b0.innerHTML = '<em>Agent</em>'; b0.appendChild(document.createTextNode(lines[0])); cv.appendChild(b0); jn.scrollTop = jn.scrollHeight;
                         pp[0].classList.add('talk'); pp[1].classList.remove('talk');
-                        await speakDynamic(agLine0, true, pcur);
+                        await say(lines[0], true, pcur, 0, true);
+                        await sleep(220);
+
+                        var dueText = (pcur === 'en' ? 'Your EMI of INR 12,500 was due on 20 September. When can you make the payment?' : (pcur === 'te' ? 'మీ ₹12,500 EMI సెప్టెంబర్ 20 న చెల్లించాల్సి ఉంది. ఎప్పుడు చెల్లించగలరు?' : (lines[2] + ' ' + lines[4])));
+                        var b1 = document.createElement('div'); b1.className = 'plbb ag'; b1.innerHTML = '<em>Agent</em>'; b1.appendChild(document.createTextNode(dueText)); cv.appendChild(b1); jn.scrollTop = jn.scrollHeight;
+                        await say(lines[2], true, pcur, 2, false);
+                        await say(lines[4], true, pcur, 4, false);
                         pp[0].classList.remove('talk');
-                        dialogueTranscript.push('Agent: ' + agLine0);
+                        dialogueTranscript.push('Agent: ' + lines[0] + ' ' + dueText);
 
                         /* ---- Live Customer Speaking Turn (Microphone / Chips) ---- */
                         stt.textContent = '🔴 Listening... Speak into your mic or select an option';
@@ -3966,14 +3992,13 @@
 
                         /* ---- Agent Contextual Response Turn ---- */
                         intentResult = analyzeIntent(customerSpoken);
-                        var addrName = addrFor(pcur, xlit(pz.name || (pcur === 'te' ? 'గారు' : 'Customer'), pcur));
                         var agReply = (cfg[intentResult] || cfg.promise).replace('{n}', addrName);
 
-                        await sleep(400);
+                        await sleep(350);
                         stt.textContent = 'Agent responding...';
                         var bResp = document.createElement('div'); bResp.className = 'plbb ag'; bResp.innerHTML = '<em>Agent</em>'; bResp.appendChild(document.createTextNode(agReply)); cv.appendChild(bResp); jn.scrollTop = jn.scrollHeight;
                         pp[0].classList.add('talk');
-                        await speakDynamic(agReply, true, pcur);
+                        await speakDynamic(agReply, true, pcur, intentResult);
                         pp[0].classList.remove('talk');
                         dialogueTranscript.push('Agent: ' + agReply);
 
