@@ -3502,13 +3502,8 @@
                 return sayTTS(t, ag, l);
             }
             function sayTTS(t, ag, l) {
-                return new Promise(function (res) {
-                    var m = pickV(l).sort(function (x, y) { return natScore(y) - natScore(x) }); if (!snd || !window.speechSynthesis || !m.length) { res(false); return } console.warn('Samvaad demo: browser voice used for a line (' + l + '); the Edge neural clip was not available');
-                    var u = new SpeechSynthesisUtterance(ttsFix(l, t)), a = m.filter(isF)[0] || m[0], c = m.filter(function (v) { return v !== a && !isF(v) })[0] || m.filter(function (v) { return v !== a })[0] || a, fem = (ag !== fcm), v = fem ? a : c, same = a === c, done = false, tm;
-                    u.voice = v; u.lang = v.lang; u.pitch = fem ? (same ? 1.2 : 1) : (same ? .78 : 1); u.rate = ag ? 1 : .95;
-                    function f() { if (!done) { done = true; clearTimeout(tm); res(true) } }
-                    tm = setTimeout(f, Math.max(3500, t.length * 170)); u.onend = f; u.onerror = f; speechSynthesis.speak(u)
-                })
+                /* Never fall back to robotic browser speechSynthesis */
+                return Promise.resolve(false);
             }
             function ctx() { if (!ac) { var C = window.AudioContext || window.webkitAudioContext; if (C) { ac = new C(); mg = ac.createGain(); mg.gain.value = snd ? 1 : 0; mg.connect(ac.destination) } } if (ac && ac.state === 'suspended') ac.resume(); return ac }
             function beep(t0, dur, fr, vol) { var g = ac.createGain(); g.gain.setValueAtTime(0, t0); g.gain.linearRampToValueAtTime(vol, t0 + .02); g.gain.setValueAtTime(vol, t0 + dur - .03); g.gain.linearRampToValueAtTime(0, t0 + dur); g.connect(mg); fr.forEach(function (f) { var o = ac.createOscillator(); o.type = 'sine'; o.frequency.value = f; o.connect(g); o.start(t0); o.stop(t0 + dur + .02) }) }
@@ -3848,13 +3843,6 @@
                 function go(skip) {
                     cname = skip ? '' : cleanName(inp.value);
                     formOn = false;
-                    if (callMode === 'interactive' && navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-                        try {
-                            navigator.mediaDevices.getUserMedia({ audio: true }).then(function (stream) {
-                                stream.getTracks().forEach(function (t) { t.stop() });
-                            }).catch(function () { });
-                        } catch (e) { }
-                    }
                     run();
                 }
                 f.addEventListener('submit', function (e) { e.preventDefault(); go(false) });
@@ -3900,13 +3888,18 @@
                         mw.innerHTML = '<div class="plmic-box"><div class="plmic-row"><button type="button" class="plmic-rec" id="plmicbtn" title="Toggle Live Microphone" aria-label="Microphone">🎙️</button><input type="text" class="plmic-inp" id="plmictext" placeholder="Speak into mic or type here..." aria-label="Customer reply"><button type="button" class="plmic-send" id="plmicsend">Send</button></div><div class="plchips">' + chipHtml + '</div></div>';
 
                         var micBtn = document.getElementById('plmicbtn'), micInp = document.getElementById('plmictext'), sendBtn = document.getElementById('plmicsend');
-                        var recognition = null, recognizing = false;
+                        var recognition = null, isListening = false, userFinished = false, silenceTimer = null;
 
                         var customerPromise = new Promise(function (resolve) {
                             function submitText(val) {
+                                if (userFinished) return;
+                                userFinished = true;
+                                clearTimeout(silenceTimer);
                                 val = (val || micInp.value || '').trim();
                                 if (!val) val = cfg.chips[0].text;
-                                if (recognition) { try { recognition.stop() } catch (e) { } }
+                                if (recognition) {
+                                    try { recognition.abort(); } catch (e) { }
+                                }
                                 mw.innerHTML = '';
                                 resolve(val);
                             }
@@ -3921,56 +3914,61 @@
                                     recognition = new SR();
                                     recognition.lang = REC_LANGS[pcur] || 'en-IN';
                                     recognition.interimResults = true;
-                                    recognition.continuous = false;
+                                    recognition.continuous = true;
                                     recognition.maxAlternatives = 1;
 
                                     function startRec() {
+                                        if (userFinished) return;
                                         try {
                                             recognition.start();
-                                            recognizing = true;
-                                            micBtn.classList.remove('off');
-                                            micBtn.textContent = '🔴';
-                                            stt.textContent = '🔴 Listening... Speak into your mic now';
                                         } catch (err) { }
                                     }
 
                                     recognition.onstart = function () {
-                                        recognizing = true;
+                                        isListening = true;
                                         micBtn.classList.remove('off');
                                         micBtn.textContent = '🔴';
-                                        stt.textContent = '🔴 Listening... Speak into your mic now';
+                                        stt.textContent = '🔴 Microphone active: Speak your response now...';
                                     };
                                     recognition.onresult = function (event) {
-                                        var str = '';
-                                        for (var i = event.resultIndex; i < event.results.length; ++i) {
-                                            str += event.results[i][0].transcript;
+                                        var fullStr = '';
+                                        for (var i = 0; i < event.results.length; ++i) {
+                                            fullStr += event.results[i][0].transcript;
                                         }
-                                        if (str) {
-                                            micInp.value = str;
-                                            stt.textContent = '🎙️ Heard: "' + str + '"';
+                                        fullStr = fullStr.trim();
+                                        if (fullStr) {
+                                            micInp.value = fullStr;
+                                            stt.textContent = '🎙️ Heard: "' + fullStr + '"';
+                                            clearTimeout(silenceTimer);
+                                            silenceTimer = setTimeout(function () {
+                                                if (!userFinished && micInp.value.trim().length > 1) {
+                                                    submitText(micInp.value);
+                                                }
+                                            }, 1100);
                                         }
                                     };
                                     recognition.onerror = function (err) {
-                                        recognizing = false;
-                                        micBtn.classList.add('off');
-                                        micBtn.textContent = '🎙️';
+                                        console.warn('SpeechRecognition error:', err);
                                         if (err && err.error === 'not-allowed') {
                                             stt.textContent = '⚠️ Mic access denied. Click 🎙️ to retry, type, or click a chip.';
+                                            isListening = false;
+                                            micBtn.classList.add('off');
+                                            micBtn.textContent = '🎙️';
                                         }
                                     };
                                     recognition.onend = function () {
-                                        recognizing = false;
+                                        isListening = false;
                                         micBtn.classList.add('off');
                                         micBtn.textContent = '🎙️';
-                                        if (micInp.value.trim().length > 1) {
+                                        if (!userFinished) {
                                             setTimeout(function () {
-                                                if (mw.innerHTML) submitText(micInp.value);
-                                            }, 700);
+                                                if (!userFinished) startRec();
+                                            }, 250);
                                         }
                                     };
                                     micBtn.addEventListener('click', function () {
-                                        if (recognizing) {
-                                            try { recognition.stop() } catch (e) { }
+                                        if (isListening) {
+                                            try { recognition.stop(); } catch (e) { }
                                         } else {
                                             startRec();
                                         }
