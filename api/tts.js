@@ -24,6 +24,20 @@ const EMIS = {
   kn: 'ಈ ಎಂ ಐ',
 };
 
+const WIN_EPOCH = 11644473600;
+const TRUSTED_CLIENT_TOKEN = '6A5AA1D4EAFF4E9FB37E23D68491D6F4';
+const CHROMIUM_FULL_VERSION = '143.0.3650.75';
+const CHROMIUM_MAJOR_VERSION = '143';
+
+function generateSecMsGec() {
+  let ticks = Date.now() / 1000;
+  ticks += WIN_EPOCH;
+  ticks -= (ticks % 300); // Round down to nearest 5 minutes
+  ticks *= 10000000; // 100-nanosecond intervals
+  const strToHash = `${Math.floor(ticks)}${TRUSTED_CLIENT_TOKEN}`;
+  return crypto.createHash('sha256').update(strToHash, 'ascii').digest('hex').toUpperCase();
+}
+
 function formatText(lang, text) {
   if (lang === 'en') {
     text = text.replace(/INR\s*([\d,]+)/g, '$1 rupees');
@@ -41,20 +55,24 @@ function synthesizeEdgeTTS(lang, voice, text, role) {
   return new Promise((resolve, reject) => {
     const connId = crypto.randomUUID().replace(/-/g, '');
     const reqId = crypto.randomUUID().replace(/-/g, '');
-    const url = `wss://speech.platform.bing.com/consumer/speech/synthesize/readaloud/edge/v1?TrustedClientToken=6A5AA1D4EA6542D8A41F31D3FB00E088&ConnectionId=${connId}`;
+    const secMsGec = generateSecMsGec();
+    const url = `wss://speech.platform.bing.com/consumer/speech/synthesize/readaloud/edge/v1?TrustedClientToken=${TRUSTED_CLIENT_TOKEN}&Sec-MS-GEC=${secMsGec}&Sec-MS-GEC-Version=1-${CHROMIUM_FULL_VERSION}&ConnectionId=${connId}`;
 
     const ws = new WebSocket(url, {
       headers: {
         'Origin': 'chrome-extension://jdiccldimpdaibmpdkjnbmckianbfold',
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36 Edg/130.0.0.0',
+        'User-Agent': `Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${CHROMIUM_MAJOR_VERSION}.0.0.0 Safari/537.36 Edg/${CHROMIUM_MAJOR_VERSION}.0.0.0`,
+        'Accept-Encoding': 'gzip, deflate, br, zstd',
+        'Accept-Language': 'en-US,en;q=0.9',
         'Pragma': 'no-cache',
-        'Cache-Control': 'no-cache'
+        'Cache-Control': 'no-cache',
+        'Sec-WebSocket-Version': '13'
       }
     });
 
     const audioChunks = [];
     let timeout = setTimeout(() => {
-      ws.close();
+      try { ws.close(); } catch (e) {}
       reject(new Error('TTS synthesis timeout'));
     }, 9000);
 
@@ -86,7 +104,7 @@ function synthesizeEdgeTTS(lang, voice, text, role) {
         const str = data.toString('utf-8');
         if (str.includes('Path:turn.end')) {
           clearTimeout(timeout);
-          ws.close();
+          try { ws.close(); } catch (e) {}
           resolve(Buffer.concat(audioChunks));
         }
       }

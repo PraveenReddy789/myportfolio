@@ -1,0 +1,9 @@
+{
+  "name": "myportfolio-tts-function",
+  "version": "1.0.0",
+  "description": "Serverless TTS Function for Dynamic Visitor Names",
+  "type": "module",
+  "dependencies": {
+    "ws": "^8.18.0"
+  }
+}
