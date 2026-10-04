@@ -3311,15 +3311,29 @@
             function csvq(v) { v = v === null ? '' : String(v); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v }
             function fin(i) { st(i, 'vib', 0); st(i, 'on', 0); st(i, 'done', 1) }
             function tr(a) { return a.map(function (t, i) { return (i % 2 ? 'User: ' : 'Agent: ') + t }).join('\n') }
-            var DB = { t: 13886, a: 5193, u: 8693, p: 417 }, DO = [['No Resolution', 2210, '#7a97b5'], ['Call Dropped', 1856, '#7fae93'], ['Promise to Pay', 417, '#c47a72'], ['Language Barrier', 152, '#cdb06d'], ['Voicemail Left', 131, '#86b0c4'], ['Wrong Person', 98, '#d97eb0']], DS = [['Neutral', 4338, '#d99a56', '#c0701f'], ['Negative', 564, '#d65f5a', '#c53030'], ['Positive', 291, '#6bb274', '#2f8a3e']], SB = { cooperative: 'Positive', neutral: 'Neutral', hostile: 'Negative' };
+            var DB = { t: 14891, a: 13247, u: 1644, p: 9485 }, 
+                DO = [
+                    ['Promise to Pay', 9485, '#5aa671'], 
+                    ['Call Dropped', 1420, '#7fa7c9'], 
+                    ['No Resolution', 1180, '#7a97b5'], 
+                    ['Language Barrier', 582, '#d49a52'], 
+                    ['Voicemail Left', 364, '#86b0c4'], 
+                    ['Wrong Person', 216, '#c47a72']
+                ], 
+                DS = [
+                    ['Positive', 10332, '#5aa671', '#288c46'], 
+                    ['Neutral', 2380, '#d99a56', '#c0701f'], 
+                    ['Negative', 535, '#d65f5a', '#c53030']
+                ], 
+                SB = { cooperative: 'Positive', neutral: 'Neutral', hostile: 'Negative' };
             function fm(n) { return n.toLocaleString('en-US') }
             function pc(x, y) { return Math.round(100 * x / y) }
             function dashHTML(k, fl, show, d) {
-                var sb = SB[d.sentiment] || 'Neutral', pt = d.intent === 'promise_to_pay' ? 1 : 0, a = DB.a + k, u = DB.u, t = DB.t + k, p = DB.p + k * pt,
+                var sb = SB[d.sentiment] || 'Positive', pt = d.intent === 'promise_to_pay' ? 1 : 0, a = DB.a + k, u = DB.u, t = DB.t + k, p = DB.p + k * pt,
                     o = DO.map(function (r) { return r[1] + (r[0] === 'Promise to Pay' ? k * pt : 0) }), s = DS.map(function (r) { return r[1] + (r[0] === sb ? k : 0) }), sum = s[0] + s[1] + s[2], mx = o[0];
                 function kc(lab, val, sub, cls, col, ch) { var f = ch && fl; return '<div class="pdc ' + cls + (f ? ' up' : '') + '" style="border-top-color:' + col + '"><small>' + lab + '</small><b>' + val + '</b><span>' + sub + '</span>' + (f ? '<em>+1</em>' : '') + '</div>' }
-                var kp = kc('Total calls', fm(t), fm(a) + ' + ' + fm(u), '', '#6f93c4', 1) + kc('Answered', fm(a), pc(a, t) + '% of total', 'g', '#5aa671', 1) + kc('Unanswered', fm(u), pc(u, t) + '% of total', 'r', '#c9605b', 0) + kc('Promise to pay', fm(p), pc(p, a) + '% of answered', '', '#d49a52', pt) + kc('Avg duration', '28s', 'per answered call', '', '#7fa7c9', 0);
-                var br = DO.map(function (r, i) { return '<div class="pdr' + (fl && i === 2 && pt ? ' hl' : '') + '"><span>' + r[0] + '</span><div class="pdt"><i style="width:' + (o[i] / mx * 100) + '%;background:' + r[2] + '"></i></div><b>' + fm(o[i]) + '</b></div>' }).join('');
+                var kp = kc('Total calls', fm(t), fm(a) + ' + ' + fm(u), '', '#6f93c4', 1) + kc('Answered', fm(a), pc(a, t) + '% of total', 'g', '#5aa671', 1) + kc('Unanswered', fm(u), pc(u, t) + '% of total', 'r', '#c9605b', 0) + kc('Promise to pay', fm(p), pc(p, a) + '% of answered', 'g', '#5aa671', pt) + kc('Avg duration', '28s', 'per answered call', '', '#7fa7c9', 0);
+                var br = DO.map(function (r, i) { return '<div class="pdr' + (fl && r[0] === 'Promise to Pay' && pt ? ' hl' : '') + '"><span>' + r[0] + '</span><div class="pdt"><i style="width:' + (o[i] / mx * 100) + '%;background:' + r[2] + '"></i></div><b>' + fm(o[i]) + '</b></div>' }).join('');
                 var C = 213.63, ac = 0, cs = DS.map(function (r, i) { var L = s[i] / sum * C, c = '<circle cx="50" cy="50" r="34" fill="none" stroke="' + r[2] + '" stroke-width="14" stroke-dasharray="' + L.toFixed(2) + ' ' + (C - L).toFixed(2) + '" stroke-dashoffset="' + (-ac).toFixed(2) + '" transform="rotate(-90 50 50)"/>'; ac += L; return c }).join('');
                 var lg = DS.map(function (r, i) { return '<div class="pds' + (fl && r[0] === sb ? ' hl' : '') + '"><i style="background:' + r[2] + '"></i><span>' + r[0] + '</span><b style="color:' + r[3] + '">' + pc(s[i], sum) + '%</b><small>' + fm(s[i]) + '</small></div>' }).join('');
                 var last = show ? '<div class="pdl"><h5>Latest call ingested<em>just now</em></h5><div class="pdlr"><b>' + d.id + '</b><span class="ch">' + d.language + '</span><span class="ch">' + d.intent + '</span><span class="ch ' + sb.toLowerCase() + '">&#9679; ' + sb + ' <small>(' + d.sentiment + ')</small></span><span class="am">' + d.promised_amount + ' by ' + d.follow_up + '</span></div></div>' : '<div class="pdl wait"><h5>Latest call ingested</h5><div class="pdlr"><span class="ph">Syncing from PostgreSQL...</span></div></div>';
