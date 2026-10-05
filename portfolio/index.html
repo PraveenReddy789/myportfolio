@@ -3339,9 +3339,9 @@
                 var last = show ? '<div class="pdl"><h5>Latest call ingested<em>just now</em></h5><div class="pdlr"><b>' + d.id + '</b><span class="ch">' + d.language + '</span><span class="ch">' + d.intent + '</span><span class="ch ' + sb.toLowerCase() + '">&#9679; ' + sb + ' <small>(' + d.sentiment + ')</small></span><span class="am">' + d.promised_amount + ' by ' + d.follow_up + '</span></div></div>' : '<div class="pdl wait"><h5>Latest call ingested</h5><div class="pdlr"><span class="ph">Syncing from PostgreSQL...</span></div></div>';
                 return '<div class="pdh"><div><h4>Overview</h4><p>Today&#39;s voice bot performance</p></div><div class="pdm"><i></i>Live &middot; ' + (show ? 'updated just now' : 'updated 11s ago') + '</div></div><div class="pdk">' + kp + '</div><div class="pdg"><div class="pdp"><h5>Call Outcomes</h5><p>Distribution for 2026-10-02</p>' + br + '</div><div class="pdp"><h5>Sentiment</h5><p>Of answered calls</p><div class="pdd"><svg viewBox="0 0 100 100" aria-hidden="true">' + cs + '</svg><div class="pdlg">' + lg + '</div></div></div></div>' + last
             }
-            pl.addEventListener('click', function (e) { var b = e.target.closest('button'); if (!b || running) return; pcur = b.dataset.l; preload(pcur, 8); setTimeout(updPv, 0); pl.querySelectorAll('button').forEach(function (x) { x.classList.toggle('on', x === b) }) });
-            /* call audio: authentic telephone ringtone + neural voices */
-            var snd = true, ac = null, mg = null, vcs = [], curAudio = null, ringAudio = null;
+            pl.addEventListener('click', function (e) { var b = e.target.closest('button'); if (!b || running) return; unlockAudio(); pcur = b.dataset.l; preload(pcur, 8); setTimeout(updPv, 0); pl.querySelectorAll('button').forEach(function (x) { x.classList.toggle('on', x === b) }) });
+            /* call audio: authentic telephone ringtone + neural voices (Web Audio engine with instant 0ms in-memory buffers) */
+            var snd = true, ac = null, mg = null, vcs = [], ringAudio = null, callPlayer = (typeof Audio !== 'undefined') ? new Audio() : null, curSource = null, AUDIO_CACHE = {};
             function lv() { if (window.speechSynthesis) vcs = speechSynthesis.getVoices() || [] }
             if (window.speechSynthesis) { lv(); if (speechSynthesis.addEventListener) speechSynthesis.addEventListener('voiceschanged', lv); else speechSynthesis.onvoiceschanged = lv }
             var LC = { en: 'en', ta: 'ta', te: 'te', ml: 'ml', gu: 'gu', 'or': 'or', kn: 'kn' };
@@ -3357,52 +3357,91 @@
                 if (raw === 'anita') raw = 'anitha';
                 if (raw === 'swati') raw = 'swathi';
                 if (raw === 'puja') raw = 'pooja';
-                if (PRE_NAMES.indexOf(raw) >= 0 && (k === 0 || k === 4 || k === 6)) {
+                if (cname && PRE_NAMES.indexOf(raw) >= 0 && (k === 0 || k === 4 || k === 6)) {
                     return 'audio/' + l + '/names/' + raw + '/' + k + '.mp3';
                 }
                 return 'audio/' + l + (fcm ? '/fc/' : '/') + k + '.mp3';
             }
+            function getAudioBuffer(url) {
+                if (AUDIO_CACHE[url]) return Promise.resolve(AUDIO_CACHE[url]);
+                return fetch(url)
+                    .then(function (r) { if (!r.ok) throw new Error(r.status); return r.arrayBuffer() })
+                    .then(function (ab) {
+                        var c = ctx();
+                        if (!c) throw new Error('No AudioContext');
+                        return new Promise(function (res, rej) {
+                            c.decodeAudioData(ab, function (buf) {
+                                AUDIO_CACHE[url] = buf;
+                                res(buf);
+                            }, rej);
+                        });
+                    });
+            }
             function preload(l, n) {
                 for (var k = 0; k < n; k++) {
-                    var a = new Audio();
-                    a.preload = 'auto';
-                    a.src = clipSrc(l, k);
+                    var s = clipSrc(l, k);
+                    getAudioBuffer(s).catch(function () { });
                 }
             }
             function stopCurAudio() {
-                if (curAudio) {
-                    try {
-                        curAudio.onended = curAudio.onerror = null;
-                        curAudio.pause();
-                        curAudio.src = '';
-                    } catch (e) { }
-                    curAudio = null;
+                if (curSource) {
+                    try { curSource.onended = null; curSource.stop() } catch (e) { }
+                    curSource = null;
+                }
+                if (callPlayer) {
+                    try { callPlayer.onended = callPlayer.onerror = null; callPlayer.pause() } catch (e) { }
                 }
             }
             function playSrc(src) {
                 return new Promise(function (res) {
                     if (!snd) { res(false); return }
                     stopCurAudio();
-                    var a = new Audio();
-                    curAudio = a;
+                    var c = ctx();
+                    if (c && c.state === 'running') {
+                        getAudioBuffer(src).then(function (buf) {
+                            var s = c.createBufferSource();
+                            s.buffer = buf;
+                            s.connect(mg || c.destination);
+                            curSource = s;
+                            var done = false;
+                            function finish(ok) {
+                                if (done) return;
+                                done = true;
+                                s.onended = null;
+                                if (curSource === s) curSource = null;
+                                res(ok);
+                            }
+                            s.onended = function () { finish(true) };
+                            s.start(0);
+                        }).catch(function () {
+                            playViaTag(src).then(res);
+                        });
+                    } else {
+                        playViaTag(src).then(res);
+                    }
+                });
+            }
+            function playViaTag(src) {
+                return new Promise(function (res) {
+                    if (!callPlayer || !snd) { res(false); return }
+                    callPlayer.muted = false;
+                    callPlayer.volume = 1.0;
                     var done = false, tm;
                     function f(ok) {
                         if (done) return;
                         done = true;
                         clearTimeout(tm);
-                        a.onended = a.onerror = null;
-                        if (curAudio === a) curAudio = null;
+                        callPlayer.onended = callPlayer.onerror = null;
                         res(ok);
                     }
-                    a.onended = function () { f(true) };
-                    a.onerror = function () { f(false) };
-                    a.preload = 'auto';
-                    a.src = src;
-                    var pr = a.play();
+                    callPlayer.onended = function () { f(true) };
+                    callPlayer.onerror = function () { f(false) };
+                    callPlayer.src = src;
+                    var pr = callPlayer.play();
                     if (pr && pr.catch) {
                         pr.catch(function () { f(false) });
                     }
-                    tm = setTimeout(function () { f(true); try { a.pause() } catch (e) { } }, 18000);
+                    tm = setTimeout(function () { f(true); try { callPlayer.pause() } catch (e) { } }, 18000);
                 });
             }
             function playClip(l, k) { return playSrc(clipSrc(l, k)) }
@@ -3413,7 +3452,7 @@
                 if (raw === 'swati') raw = 'swathi';
                 if (raw === 'puja') raw = 'pooja';
                 var isCustomerTurn = (k % 2 !== 0);
-                var hasLocalClip = (!cname) || (PRE_NAMES.indexOf(raw) >= 0) || isCustomerTurn;
+                var hasLocalClip = (!cname) || (cname && PRE_NAMES.indexOf(raw) >= 0) || isCustomerTurn;
 
                 // Priority 1: Instant local pre-rendered audio (0ms latency!)
                 if (hasLocalClip) {
@@ -3494,6 +3533,21 @@
             function stopRingtone() {
                 if (ringAudio) {
                     try { ringAudio.pause(); ringAudio.currentTime = 0; } catch (e) { }
+                }
+            }
+            function unlockAudio() {
+                var c = ctx();
+                if (c && c.state === 'suspended') {
+                    try { c.resume() } catch (e) { }
+                }
+                if (callPlayer) {
+                    try {
+                        callPlayer.muted = true;
+                        callPlayer.src = SIL;
+                        var p = callPlayer.play();
+                        if (p && p.catch) p.catch(function () { });
+                        setTimeout(function () { if (callPlayer) callPlayer.muted = false }, 50);
+                    } catch (e) { }
                 }
             }
             function pickup() { stopRingtone(); if (snd && ctx()) beep(ac.currentTime + .02, .09, [900], .12) }
@@ -3753,25 +3807,30 @@
                 mark(); updPv();
                 inp.addEventListener('input', function () { if (!gtouch) { cgen = guessF(cleanName(inp.value)) ? 'F' : 'M'; mark() } updPv() });
                 gn.addEventListener('click', function (e) { var b = e.target.closest('button'); if (!b) return; gtouch = true; cgen = b.dataset.g; mark(); updPv() });
-                function go(skip) { cname = skip ? '' : cleanName(inp.value); formOn = false; run() }
+                function go(skip) {
+                    unlockAudio();
+                    cname = skip ? '' : cleanName(inp.value);
+                    formOn = false;
+                    run();
+                }
                 f.addEventListener('submit', function (e) { e.preventDefault(); go(false) });
-                document.getElementById('plskip').addEventListener('click', function () { go(true) });
+                document.getElementById('plskip').addEventListener('click', function (e) { e.preventDefault(); go(true) });
                 try { inp.focus({ preventScroll: true }) } catch (e) { }
             }
             async function run() {
                 if (running) return; running = true; ib.disabled = true; pl.querySelectorAll('button').forEach(function (x) { x.disabled = true }); pidle();
                 try {
-                    var en = pcur === 'en', pz = personalize(en ? PE : PN[pcur], pcur), lines = pz.lines, d = { id: 'c_' + (48213 + cnt), customer_name: pz.rec || null, language: PNM[pcur], intent: 'promise_to_pay', sentiment: 'cooperative', promised_amount: 'INR 12,500', follow_up: '2026-10-07', dispute: false, callback_requested: false, reason_for_non_payment: pz.reason.key, summary: pz.reason.summary, transcript: tr(lines) };
+                    unlockAudio();
+                    var en = pcur === 'en', pz = personalize(en ? PE : PN[pcur], pcur), lines = pz.lines, d = { id: 'c_' + (48213 + cnt), customer_name: pz.rec || (cname ? cname : 'Customer'), language: PNM[pcur], intent: 'promise_to_pay', sentiment: 'cooperative', promised_amount: 'INR 12,500', follow_up: '2026-10-07', dispute: false, callback_requested: false, reason_for_non_payment: pz.reason.key, summary: pz.reason.summary, transcript: tr(lines) };
                     if (!en) d.transcript_english = tr(pz.en); d.recording_url = 'https://recordings.example.com/calls/' + d.id + '.wav';
-                    jn.innerHTML = '<div class="plsc"><div class="plwho"><div class="plpp">' + AGI + '<small>Agent</small></div><div class="plwire"><i></i><i></i><i></i></div><div class="plpp ring" id="plcu">' + CUI + '<small>Customer</small></div></div><div class="plstt" id="plst">Agent is calling the customer...</div><div class="plcv" id="plcv"></div></div>';
-                    var stt = document.getElementById('plst'), cv = document.getElementById('plcv'), cu = document.getElementById('plcu'), wr = jn.querySelector('.plwire'); if (pz.name) cu.querySelector('small').textContent = pz.name;
-                    if (snd) { ctx(); lv(); }
+                    jn.innerHTML = '<div class="plsc"><div class="plwho"><div class="plpp">' + AGI + '<small>Agent</small></div><div class="plwire"><i></i><i></i><i></i></div><div class="plpp ring" id="plcu">' + CUI + '<small>' + (pz.name || 'Customer') + '</small></div></div><div class="plstt" id="plst">Agent is calling the customer...</div><div class="plcv" id="plcv"></div></div>';
+                    var stt = document.getElementById('plst'), cv = document.getElementById('plcv'), cu = document.getElementById('plcu'), wr = jn.querySelector('.plwire');
                     var noted = false; preload(pcur, 8); prefetchCustom(pz, pcur); st(0, 'on', 1); st(0, 'vib', 1);
                     playRingtone();
-                    await sleep(snd ? 2800 : 1800);
+                    await sleep(snd ? 1900 : 1200);
                     stopRingtone();
                     if (snd && pz.idx.length && PC[0]) await Promise.race([PC[0], sleep(TTS_WAIT)]);
-                    stt.textContent = 'Customer picked up the phone'; pickup(); cu.classList.remove('ring'); wr.classList.add('live'); jn.querySelectorAll('.plpp').forEach(function (x) { x.classList.add('talk') }); st(1, 'on', 1); st(1, 'vib', 1); await sleep(800);
+                    stt.textContent = 'Customer picked up the phone'; pickup(); cu.classList.remove('ring'); wr.classList.add('live'); jn.querySelectorAll('.plpp').forEach(function (x) { x.classList.add('talk') }); st(1, 'on', 1); st(1, 'vib', 1); await sleep(450);
                     stt.textContent = 'Conversation in progress (' + PNM[pcur] + ')...'; var pp = jn.querySelectorAll('.plpp');
                     for (var k = 0; k < lines.length; k++) {
                         var ag = k % 2 === 0, b = document.createElement('div');
@@ -3788,9 +3847,9 @@
                             noted = true;
                             stt.textContent = 'Conversation in progress (' + PNM[pcur] + '), captions only: no voice for this language yet.';
                         }
-                        await sleep(sp ? 340 + Math.random() * 200 : 1200);
+                        await sleep(sp ? 280 + Math.random() * 150 : 800);
                     }
-                    hang(); stt.textContent = 'Call ended, 00:' + ('0' + (lines.length * 4 + 3)).slice(-2); wr.classList.remove('live'); jn.querySelectorAll('.plpp').forEach(function (x) { x.classList.remove('talk') }); fin(0); fin(1); await sleep(1000);
+                    hang(); stt.textContent = 'Call ended, 00:' + ('0' + (lines.length * 4 + 3)).slice(-2); wr.classList.remove('live'); jn.querySelectorAll('.plpp').forEach(function (x) { x.classList.remove('talk') }); fin(0); fin(1); await sleep(800);
                     st(2, 'on', 1); st(2, 'vib', 1); jn.innerHTML = '<div class="plsc"><div class="plstt"><span class="plspin"></span>LLM is processing the call...</div><ul class="plex" id="plex"></ul><div class="pltr" id="pltr"></div></div>';
                     var ex = document.getElementById('plex'), tb = document.getElementById('pltr'), F = [['language', d.language], ['intent', d.intent], ['sentiment', d.sentiment], ['callback_requested', d.callback_requested], ['reason_for_non_payment', d.reason_for_non_payment], ['summary', 'generated']];
                     for (var j = 0; j < F.length; j++) { var li = document.createElement('li'); li.innerHTML = '<b>&#10003;</b>'; li.appendChild(document.createTextNode(F[j][0] + ': ' + F[j][1])); ex.appendChild(li); await sleep(380) }
@@ -3812,7 +3871,7 @@
                     showD(true)
                 } finally { ib.disabled = false; running = false; pl.querySelectorAll('button').forEach(function (x) { x.disabled = false }) }
             }
-            ib.addEventListener('click', askName); pidle();
+            ib.addEventListener('click', function () { unlockAudio(); askName(); }); pidle();
             /* text-to-sql demo */
             var Q = [{ sql: "SELECT COUNT(*) AS calls\nFROM calls\nWHERE intent = 'promise_to_pay'\n  AND call_date >= date_trunc('week', now());", h: ['calls'], r: [['1,284']] },
             { sql: "SELECT language,\n  ROUND(100.0 * SUM(dispute::int) / COUNT(*), 1) AS dispute_pct\nFROM calls\nGROUP BY language\nORDER BY dispute_pct DESC\nLIMIT 3;", h: ['language', 'dispute_pct'], r: [['Tamil', '6.2'], ['Hindi', '4.8'], ['Telugu', '3.9']] },
