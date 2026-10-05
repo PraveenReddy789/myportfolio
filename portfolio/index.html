@@ -1912,7 +1912,7 @@
             height: 100%;
             z-index: 0;
             pointer-events: none;
-            opacity: .5
+            opacity: .8
         }
 
         .hero .wrap {
@@ -4802,24 +4802,28 @@
                 orb.addEventListener('pointerleave', function () { spd = .22; over = false });
                 var vis = true; if ('IntersectionObserver' in window) new IntersectionObserver(function (e) { vis = e[0].isIntersecting }).observe(orb);
                 function loop() { if (vis && !rm) { ang += spd } draw(); requestAnimationFrame(loop) } draw(); if (!rm) requestAnimationFrame(loop);
-                /* three.js data-network hero */
-                var glOK = false;
-                try { var tcv = document.createElement('canvas'), tgl = tcv.getContext('webgl2') || tcv.getContext('webgl') || tcv.getContext('experimental-webgl'); if (tgl) { glOK = true; var lx = tgl.getExtension('WEBGL_lose_context'); if (lx) lx.loseContext() } } catch (e) { }
-                if (window.THREE && glOK) {
+                /* three.js / canvas data-network hero */
+                var cv = document.getElementById('gl'), hero = document.getElementById('top');
+                var glStarted = false;
+                if (window.THREE && cv && hero) {
                     try {
-                        var cv = document.getElementById('gl'), hero = document.getElementById('top');
-                        var rd = new THREE.WebGLRenderer({ canvas: cv, alpha: true, antialias: true }); rd.setPixelRatio(Math.min(devicePixelRatio, 2));
+                        var rd = new THREE.WebGLRenderer({ canvas: cv, alpha: true, antialias: true, powerPreference: 'high-performance' });
+                        rd.setPixelRatio(Math.min(devicePixelRatio, 2));
                         var sc = new THREE.Scene(), cam = new THREE.PerspectiveCamera(55, 1, 1, 400); cam.position.z = 70;
                         var N = rm ? 70 : 120, pos = new Float32Array(N * 3), vel = [], g = new THREE.Group(); sc.add(g);
                         for (var i = 0; i < N; i++) { pos[i * 3] = (Math.random() - .5) * 150; pos[i * 3 + 1] = (Math.random() - .5) * 80; pos[i * 3 + 2] = (Math.random() - .5) * 50; vel.push([(Math.random() - .5) * .06, (Math.random() - .5) * .06, (Math.random() - .5) * .03]) }
                         var col = function () { var c = getComputedStyle(document.documentElement).getPropertyValue('--ink').trim() || '#0b0b0b'; return new THREE.Color(c) };
                         var pg = new THREE.BufferGeometry(); pg.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-                        var tc = document.createElement('canvas'); tc.width = tc.height = 64; var tx = tc.getContext('2d'); tx.beginPath(); tx.arc(32, 32, 30, 0, 7); tx.fillStyle = '#fff'; tx.fill(); var pm = new THREE.PointsMaterial({ color: 0xf26a21, size: 1.7, map: new THREE.CanvasTexture(tc), alphaTest: .4, transparent: true, opacity: .95, sizeAttenuation: true }); g.add(new THREE.Points(pg, pm));
+                        var tc = document.createElement('canvas'); tc.width = tc.height = 64; var tx = tc.getContext('2d'); tx.beginPath(); tx.arc(32, 32, 30, 0, 7); tx.fillStyle = '#f26a21'; tx.fill();
+                        var pm = new THREE.PointsMaterial({ color: 0xf26a21, size: 2.2, map: new THREE.CanvasTexture(tc), alphaTest: .2, transparent: true, opacity: .95, sizeAttenuation: true }); g.add(new THREE.Points(pg, pm));
                         var MAX = N * N, lp = new Float32Array(MAX * 6), lg = new THREE.BufferGeometry(); lg.setAttribute('position', new THREE.BufferAttribute(lp, 3)); lg.setDrawRange(0, 0);
-                        var lm = new THREE.LineBasicMaterial({ color: col(), transparent: true, opacity: .2 }); g.add(new THREE.LineSegments(lg, lm));
-                        var core = new THREE.Mesh(new THREE.IcosahedronGeometry(9, 1), new THREE.MeshBasicMaterial({ color: 0xf26a21, wireframe: true, transparent: true, opacity: .55 })); core.position.set(48, 6, -6); g.add(core);
+                        var lm = new THREE.LineBasicMaterial({ color: col(), transparent: true, opacity: .45 }); g.add(new THREE.LineSegments(lg, lm));
+                        var core = new THREE.Mesh(new THREE.IcosahedronGeometry(9, 1), new THREE.MeshBasicMaterial({ color: 0xf26a21, wireframe: true, transparent: true, opacity: .65 })); core.position.set(48, 6, -6); g.add(core);
                         matchMedia('(prefers-color-scheme:dark)').addEventListener('change', function () { lm.color = col() }); addEventListener('themechange', function () { lm.color = col() });
-                        function size() { var w = hero.clientWidth, h = hero.clientHeight; rd.setSize(w, h, false); cam.aspect = w / h; cam.updateProjectionMatrix() } size(); addEventListener('resize', size);
+                        function size() { var w = hero.clientWidth || window.innerWidth, h = hero.clientHeight || window.innerHeight; if (w > 0 && h > 0) { rd.setSize(w, h, false); cam.aspect = w / h; cam.updateProjectionMatrix(); } }
+                        size(); addEventListener('resize', size);
+                        if (document.fonts && document.fonts.ready) document.fonts.ready.then(size);
+                        setTimeout(size, 250);
                         var mx = 0, my = 0, hv = true, mox = null, moy = null, boost = 0; hero.addEventListener('pointermove', function (e) { var b = hero.getBoundingClientRect(); mx = (e.clientX - b.left) / b.width - .5; my = (e.clientY - b.top) / b.height - .5; mox = mx * 140; moy = -my * 76 }); hero.addEventListener('click', function () { boost = 1 });
                         if ('IntersectionObserver' in window) new IntersectionObserver(function (e) { hv = e[0].isIntersecting }).observe(hero);
                         function frame() {
@@ -4827,14 +4831,71 @@
                                 boost *= .95; core.scale.setScalar(1 + boost * .6); var p = pg.attributes.position.array, k = 0;
                                 for (var i = 0; i < N; i++) { if (!rm) { for (var d = 0; d < 3; d++) { p[i * 3 + d] += vel[i][d] * (1 + boost * 7); var lim = d == 0 ? 75 : d == 1 ? 40 : 25; if (Math.abs(p[i * 3 + d]) > lim) vel[i][d] *= -1 } } }
                                 if (!rm && mox !== null) for (var q = 0; q < N; q++) { var ex = p[q * 3] - mox, ey = p[q * 3 + 1] - moy, e2 = ex * ex + ey * ey; if (e2 < 450 && e2 > .01) { p[q * 3] += ex * .035; p[q * 3 + 1] += ey * .035 } }
-                                for (var a = 0; a < N; a++)for (var b = a + 1; b < N; b++) { var dx = p[a * 3] - p[b * 3], dy = p[a * 3 + 1] - p[b * 3 + 1], dz = p[a * 3 + 2] - p[b * 3 + 2]; if (dx * dx + dy * dy + dz * dz < 300) { lp[k++] = p[a * 3]; lp[k++] = p[a * 3 + 1]; lp[k++] = p[a * 3 + 2]; lp[k++] = p[b * 3]; lp[k++] = p[b * 3 + 1]; lp[k++] = p[b * 3 + 2] } }
+                                for (var a = 0; a < N; a++) for (var b = a + 1; b < N; b++) { var dx = p[a * 3] - p[b * 3], dy = p[a * 3 + 1] - p[b * 3 + 1], dz = p[a * 3 + 2] - p[b * 3 + 2]; if (dx * dx + dy * dy + dz * dz < 340) { lp[k++] = p[a * 3]; lp[k++] = p[a * 3 + 1]; lp[k++] = p[a * 3 + 2]; lp[k++] = p[b * 3]; lp[k++] = p[b * 3 + 1]; lp[k++] = p[b * 3 + 2] } }
                                 pg.attributes.position.needsUpdate = true; lg.attributes.position.needsUpdate = true; lg.setDrawRange(0, k / 3);
                                 g.rotation.y += ((mx * .5) - g.rotation.y) * .04; g.rotation.x += ((my * .3) - g.rotation.x) * .04; if (!rm) { core.rotation.x += .004; core.rotation.y += .006 }
-                                rd.render(sc, cam)
+                                rd.render(sc, cam);
                             } if (!rm) requestAnimationFrame(frame)
                         }
-                        frame(); if (rm) rd.render(sc, cam)
-                    } catch (err) { var gc = document.getElementById('gl'); if (gc) gc.style.display = 'none' }
+                        frame(); if (rm) rd.render(sc, cam);
+                        glStarted = true;
+                    } catch (err) {
+                        console.warn('Three.js WebGL init failed, switching to 2D canvas fallback', err);
+                    }
+                }
+                if (!glStarted && cv && hero) {
+                    /* Robust 2D Canvas Fallback for connecting strings */
+                    try {
+                        var ctx = cv.getContext('2d');
+                        if (ctx) {
+                            var pts = [], N2 = rm ? 45 : 85, cw = 0, ch = 0, m2x = null, m2y = null;
+                            function rsz2() {
+                                cw = cv.width = hero.clientWidth || window.innerWidth;
+                                ch = cv.height = hero.clientHeight || window.innerHeight;
+                            }
+                            rsz2(); addEventListener('resize', rsz2);
+                            for (var p2 = 0; p2 < N2; p2++) {
+                                pts.push({ x: Math.random() * (cw || 1000), y: Math.random() * (ch || 600), vx: (Math.random() - .5) * .8, vy: (Math.random() - .5) * .8, r: Math.random() * 2 + 1.8 });
+                            }
+                            hero.addEventListener('pointermove', function (e) { var b = hero.getBoundingClientRect(); m2x = e.clientX - b.left; m2y = e.clientY - b.top; });
+                            hero.addEventListener('pointerleave', function () { m2x = null; m2y = null; });
+                            function loop2() {
+                                ctx.clearRect(0, 0, cw, ch);
+                                var isDark = getComputedStyle(document.documentElement).getPropertyValue('--bg').trim() === '#0f0f10';
+                                var strokeColor = isDark ? 'rgba(244, 244, 244, ' : 'rgba(11, 11, 11, ';
+                                for (var i = 0; i < N2; i++) {
+                                    var pi = pts[i];
+                                    if (!rm) {
+                                        pi.x += pi.vx; pi.y += pi.vy;
+                                        if (pi.x < 0 || pi.x > cw) pi.vx *= -1;
+                                        if (pi.y < 0 || pi.y > ch) pi.vy *= -1;
+                                        if (m2x !== null) {
+                                            var dmx = pi.x - m2x, dmy = pi.y - m2y, distM = Math.sqrt(dmx * dmx + dmy * dmy);
+                                            if (distM < 100 && distM > 1) { pi.x += (dmx / distM) * 1.5; pi.y += (dmy / distM) * 1.5; }
+                                        }
+                                    }
+                                    ctx.beginPath();
+                                    ctx.arc(pi.x, pi.y, pi.r, 0, Math.PI * 2);
+                                    ctx.fillStyle = '#f26a21';
+                                    ctx.fill();
+                                    for (var j = i + 1; j < N2; j++) {
+                                        var pj = pts[j], dx = pi.x - pj.x, dy = pi.y - pj.y, dist = Math.sqrt(dx * dx + dy * dy);
+                                        if (dist < 130) {
+                                            var alpha = ((1 - dist / 130) * 0.45).toFixed(2);
+                                            ctx.beginPath();
+                                            ctx.moveTo(pi.x, pi.y);
+                                            ctx.lineTo(pj.x, pj.y);
+                                            ctx.strokeStyle = strokeColor + alpha + ')';
+                                            ctx.lineWidth = 1;
+                                            ctx.stroke();
+                                        }
+                                    }
+                                }
+                                if (!rm) requestAnimationFrame(loop2);
+                            }
+                            loop2();
+                        }
+                    } catch (e2) { }
                 }
             })();
     </script>
