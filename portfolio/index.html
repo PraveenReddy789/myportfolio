@@ -4821,9 +4821,26 @@
                         var pm = new THREE.PointsMaterial({ color: 0xf26a21, size: 1.6, map: new THREE.CanvasTexture(tc), alphaTest: .2, transparent: true, opacity: .88, sizeAttenuation: true }); g.add(new THREE.Points(pg, pm));
                         var MAX = N * N, lp = new Float32Array(MAX * 6), lg = new THREE.BufferGeometry(); lg.setAttribute('position', new THREE.BufferAttribute(lp, 3)); lg.setDrawRange(0, 0);
                         var lm = new THREE.LineBasicMaterial({ color: col(), transparent: true, opacity: .3 }); g.add(new THREE.LineSegments(lg, lm));
-                        var core = new THREE.Mesh(new THREE.IcosahedronGeometry(9, 1), new THREE.MeshBasicMaterial({ color: 0xf26a21, wireframe: true, transparent: true, opacity: .45 })); core.position.set(48, 6, -6); g.add(core);
+                        var core = new THREE.Mesh(new THREE.IcosahedronGeometry(9, 1), new THREE.MeshBasicMaterial({ color: 0xf26a21, wireframe: true, transparent: true, opacity: .75 }));
+                        var coreInner = new THREE.Mesh(new THREE.IcosahedronGeometry(8.5, 1), new THREE.MeshBasicMaterial({ color: 0xf26a21, transparent: true, opacity: .09 }));
+                        core.add(coreInner);
+                        g.add(core);
                         matchMedia('(prefers-color-scheme:dark)').addEventListener('change', function () { lm.color = col() }); addEventListener('themechange', function () { lm.color = col() });
-                        function size() { var w = hero.clientWidth || window.innerWidth, h = hero.clientHeight || window.innerHeight; if (w > 0 && h > 0) { rd.setSize(w, h, false); cam.aspect = w / h; cam.updateProjectionMatrix(); } }
+                        function updateCorePos() {
+                            var vh = Math.tan(cam.fov * Math.PI / 360) * cam.position.z;
+                            var vw = vh * cam.aspect;
+                            var targetX = Math.max(16, Math.min(vw * 0.70, vw - 14));
+                            core.position.set(targetX, 6, -6);
+                        }
+                        function size() {
+                            var w = hero.clientWidth || window.innerWidth, h = hero.clientHeight || window.innerHeight;
+                            if (w > 0 && h > 0) {
+                                rd.setSize(w, h, false);
+                                cam.aspect = w / h;
+                                cam.updateProjectionMatrix();
+                                updateCorePos();
+                            }
+                        }
                         size(); addEventListener('resize', size);
                         if (document.fonts && document.fonts.ready) document.fonts.ready.then(size);
                         setTimeout(size, 250);
@@ -4847,11 +4864,11 @@
                     }
                 }
                 if (!glStarted && cv && hero) {
-                    /* Robust 2D Canvas Fallback for connecting strings */
+                    /* Robust 2D Canvas Fallback for connecting strings and 3D shaped ball */
                     try {
                         var ctx = cv.getContext('2d');
                         if (ctx) {
-                            var pts = [], N2 = rm ? 35 : 55, cw = 0, ch = 0, m2x = null, m2y = null;
+                            var pts = [], N2 = rm ? 35 : 55, cw = 0, ch = 0, m2x = null, m2y = null, bang = 0;
                             function rsz2() {
                                 cw = cv.width = hero.clientWidth || window.innerWidth;
                                 ch = cv.height = hero.clientHeight || window.innerHeight;
@@ -4862,6 +4879,12 @@
                             }
                             hero.addEventListener('pointermove', function (e) { var b = hero.getBoundingClientRect(); m2x = e.clientX - b.left; m2y = e.clientY - b.top; });
                             hero.addEventListener('pointerleave', function () { m2x = null; m2y = null; });
+                            var phi = (1 + Math.sqrt(5)) / 2;
+                            var rawVerts = [
+                                [-1, phi, 0], [1, phi, 0], [-1, -phi, 0], [1, -phi, 0],
+                                [0, -1, phi], [0, 1, phi], [0, -1, -phi], [0, 1, -phi],
+                                [phi, 0, -1], [phi, 0, 1], [-phi, 0, -1], [-phi, 0, 1]
+                            ];
                             function loop2() {
                                 ctx.clearRect(0, 0, cw, ch);
                                 var isDark = getComputedStyle(document.documentElement).getPropertyValue('--bg').trim() === '#0f0f10';
@@ -4890,6 +4913,30 @@
                                             ctx.lineTo(pj.x, pj.y);
                                             ctx.strokeStyle = strokeColor + alpha + ')';
                                             ctx.lineWidth = 1;
+                                            ctx.stroke();
+                                        }
+                                    }
+                                }
+                                /* 3D shaped ball in 2D canvas */
+                                if (!rm) bang += 0.007;
+                                var bx = Math.max(120, Math.min(cw * 0.82, cw - 70)), by = ch * 0.38, br = Math.min(48, Math.max(28, cw * 0.05));
+                                var cosA = Math.cos(bang), sinA = Math.sin(bang);
+                                var cosB = Math.cos(bang * 0.8), sinB = Math.sin(bang * 0.8);
+                                var proj = rawVerts.map(function (v) {
+                                    var x = v[0] / 1.9, y = v[1] / 1.9, z = v[2] / 1.9;
+                                    var x1 = x * cosA - z * sinA, z1 = x * sinA + z * cosA;
+                                    var y2 = y * cosB - z1 * sinB, z2 = y * sinB + z1 * cosB;
+                                    return { x: bx + x1 * br, y: by + y2 * br, z: z2 };
+                                });
+                                ctx.lineWidth = 1.1;
+                                ctx.strokeStyle = 'rgba(242, 106, 33, 0.75)';
+                                for (var m = 0; m < rawVerts.length; m++) {
+                                    for (var n = m + 1; n < rawVerts.length; n++) {
+                                        var ddx = rawVerts[m][0] - rawVerts[n][0], ddy = rawVerts[m][1] - rawVerts[n][1], ddz = rawVerts[m][2] - rawVerts[n][2];
+                                        if (Math.abs(ddx * ddx + ddy * ddy + ddz * ddz - 4) < 0.2) {
+                                            ctx.beginPath();
+                                            ctx.moveTo(proj[m].x, proj[m].y);
+                                            ctx.lineTo(proj[n].x, proj[n].y);
                                             ctx.stroke();
                                         }
                                     }
