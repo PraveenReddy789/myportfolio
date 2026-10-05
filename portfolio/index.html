@@ -1912,7 +1912,7 @@
             height: 100%;
             z-index: 0;
             pointer-events: none;
-            opacity: .8
+            opacity: .65
         }
 
         .hero .wrap {
@@ -4810,15 +4810,18 @@
                         var rd = new THREE.WebGLRenderer({ canvas: cv, alpha: true, antialias: true, powerPreference: 'high-performance' });
                         rd.setPixelRatio(Math.min(devicePixelRatio, 2));
                         var sc = new THREE.Scene(), cam = new THREE.PerspectiveCamera(55, 1, 1, 400); cam.position.z = 70;
-                        var N = rm ? 70 : 120, pos = new Float32Array(N * 3), vel = [], g = new THREE.Group(); sc.add(g);
-                        for (var i = 0; i < N; i++) { pos[i * 3] = (Math.random() - .5) * 150; pos[i * 3 + 1] = (Math.random() - .5) * 80; pos[i * 3 + 2] = (Math.random() - .5) * 50; vel.push([(Math.random() - .5) * .06, (Math.random() - .5) * .06, (Math.random() - .5) * .03]) }
-                        var col = function () { var c = getComputedStyle(document.documentElement).getPropertyValue('--ink').trim() || '#0b0b0b'; return new THREE.Color(c) };
+                        var N = rm ? 45 : 75, pos = new Float32Array(N * 3), vel = [], g = new THREE.Group(); sc.add(g);
+                        for (var i = 0; i < N; i++) { pos[i * 3] = (Math.random() - .5) * 155; pos[i * 3 + 1] = (Math.random() - .5) * 85; pos[i * 3 + 2] = (Math.random() - .5) * 50; vel.push([(Math.random() - .5) * .05, (Math.random() - .5) * .05, (Math.random() - .5) * .025]) }
+                        var col = function () {
+                            var dark = getComputedStyle(document.documentElement).getPropertyValue('--bg').trim() === '#0f0f10';
+                            return dark ? new THREE.Color(0xd4d4d8) : new THREE.Color(0x606066);
+                        };
                         var pg = new THREE.BufferGeometry(); pg.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-                        var tc = document.createElement('canvas'); tc.width = tc.height = 64; var tx = tc.getContext('2d'); tx.beginPath(); tx.arc(32, 32, 30, 0, 7); tx.fillStyle = '#f26a21'; tx.fill();
-                        var pm = new THREE.PointsMaterial({ color: 0xf26a21, size: 2.2, map: new THREE.CanvasTexture(tc), alphaTest: .2, transparent: true, opacity: .95, sizeAttenuation: true }); g.add(new THREE.Points(pg, pm));
+                        var tc = document.createElement('canvas'); tc.width = tc.height = 64; var tx = tc.getContext('2d'); tx.beginPath(); tx.arc(32, 32, 28, 0, 7); tx.fillStyle = '#f26a21'; tx.fill();
+                        var pm = new THREE.PointsMaterial({ color: 0xf26a21, size: 1.6, map: new THREE.CanvasTexture(tc), alphaTest: .2, transparent: true, opacity: .88, sizeAttenuation: true }); g.add(new THREE.Points(pg, pm));
                         var MAX = N * N, lp = new Float32Array(MAX * 6), lg = new THREE.BufferGeometry(); lg.setAttribute('position', new THREE.BufferAttribute(lp, 3)); lg.setDrawRange(0, 0);
-                        var lm = new THREE.LineBasicMaterial({ color: col(), transparent: true, opacity: .45 }); g.add(new THREE.LineSegments(lg, lm));
-                        var core = new THREE.Mesh(new THREE.IcosahedronGeometry(9, 1), new THREE.MeshBasicMaterial({ color: 0xf26a21, wireframe: true, transparent: true, opacity: .65 })); core.position.set(48, 6, -6); g.add(core);
+                        var lm = new THREE.LineBasicMaterial({ color: col(), transparent: true, opacity: .3 }); g.add(new THREE.LineSegments(lg, lm));
+                        var core = new THREE.Mesh(new THREE.IcosahedronGeometry(9, 1), new THREE.MeshBasicMaterial({ color: 0xf26a21, wireframe: true, transparent: true, opacity: .45 })); core.position.set(48, 6, -6); g.add(core);
                         matchMedia('(prefers-color-scheme:dark)').addEventListener('change', function () { lm.color = col() }); addEventListener('themechange', function () { lm.color = col() });
                         function size() { var w = hero.clientWidth || window.innerWidth, h = hero.clientHeight || window.innerHeight; if (w > 0 && h > 0) { rd.setSize(w, h, false); cam.aspect = w / h; cam.updateProjectionMatrix(); } }
                         size(); addEventListener('resize', size);
@@ -4831,7 +4834,7 @@
                                 boost *= .95; core.scale.setScalar(1 + boost * .6); var p = pg.attributes.position.array, k = 0;
                                 for (var i = 0; i < N; i++) { if (!rm) { for (var d = 0; d < 3; d++) { p[i * 3 + d] += vel[i][d] * (1 + boost * 7); var lim = d == 0 ? 75 : d == 1 ? 40 : 25; if (Math.abs(p[i * 3 + d]) > lim) vel[i][d] *= -1 } } }
                                 if (!rm && mox !== null) for (var q = 0; q < N; q++) { var ex = p[q * 3] - mox, ey = p[q * 3 + 1] - moy, e2 = ex * ex + ey * ey; if (e2 < 450 && e2 > .01) { p[q * 3] += ex * .035; p[q * 3 + 1] += ey * .035 } }
-                                for (var a = 0; a < N; a++) for (var b = a + 1; b < N; b++) { var dx = p[a * 3] - p[b * 3], dy = p[a * 3 + 1] - p[b * 3 + 1], dz = p[a * 3 + 2] - p[b * 3 + 2]; if (dx * dx + dy * dy + dz * dz < 340) { lp[k++] = p[a * 3]; lp[k++] = p[a * 3 + 1]; lp[k++] = p[a * 3 + 2]; lp[k++] = p[b * 3]; lp[k++] = p[b * 3 + 1]; lp[k++] = p[b * 3 + 2] } }
+                                for (var a = 0; a < N; a++) for (var b = a + 1; b < N; b++) { var dx = p[a * 3] - p[b * 3], dy = p[a * 3 + 1] - p[b * 3 + 1], dz = p[a * 3 + 2] - p[b * 3 + 2]; if (dx * dx + dy * dy + dz * dz < 220) { lp[k++] = p[a * 3]; lp[k++] = p[a * 3 + 1]; lp[k++] = p[a * 3 + 2]; lp[k++] = p[b * 3]; lp[k++] = p[b * 3 + 1]; lp[k++] = p[b * 3 + 2] } }
                                 pg.attributes.position.needsUpdate = true; lg.attributes.position.needsUpdate = true; lg.setDrawRange(0, k / 3);
                                 g.rotation.y += ((mx * .5) - g.rotation.y) * .04; g.rotation.x += ((my * .3) - g.rotation.x) * .04; if (!rm) { core.rotation.x += .004; core.rotation.y += .006 }
                                 rd.render(sc, cam);
@@ -4848,21 +4851,21 @@
                     try {
                         var ctx = cv.getContext('2d');
                         if (ctx) {
-                            var pts = [], N2 = rm ? 45 : 85, cw = 0, ch = 0, m2x = null, m2y = null;
+                            var pts = [], N2 = rm ? 35 : 55, cw = 0, ch = 0, m2x = null, m2y = null;
                             function rsz2() {
                                 cw = cv.width = hero.clientWidth || window.innerWidth;
                                 ch = cv.height = hero.clientHeight || window.innerHeight;
                             }
                             rsz2(); addEventListener('resize', rsz2);
                             for (var p2 = 0; p2 < N2; p2++) {
-                                pts.push({ x: Math.random() * (cw || 1000), y: Math.random() * (ch || 600), vx: (Math.random() - .5) * .8, vy: (Math.random() - .5) * .8, r: Math.random() * 2 + 1.8 });
+                                pts.push({ x: Math.random() * (cw || 1000), y: Math.random() * (ch || 600), vx: (Math.random() - .5) * .7, vy: (Math.random() - .5) * .7, r: Math.random() * 1.5 + 1.2 });
                             }
                             hero.addEventListener('pointermove', function (e) { var b = hero.getBoundingClientRect(); m2x = e.clientX - b.left; m2y = e.clientY - b.top; });
                             hero.addEventListener('pointerleave', function () { m2x = null; m2y = null; });
                             function loop2() {
                                 ctx.clearRect(0, 0, cw, ch);
                                 var isDark = getComputedStyle(document.documentElement).getPropertyValue('--bg').trim() === '#0f0f10';
-                                var strokeColor = isDark ? 'rgba(244, 244, 244, ' : 'rgba(11, 11, 11, ';
+                                var strokeColor = isDark ? 'rgba(212, 212, 216, ' : 'rgba(96, 96, 102, ';
                                 for (var i = 0; i < N2; i++) {
                                     var pi = pts[i];
                                     if (!rm) {
@@ -4880,8 +4883,8 @@
                                     ctx.fill();
                                     for (var j = i + 1; j < N2; j++) {
                                         var pj = pts[j], dx = pi.x - pj.x, dy = pi.y - pj.y, dist = Math.sqrt(dx * dx + dy * dy);
-                                        if (dist < 130) {
-                                            var alpha = ((1 - dist / 130) * 0.45).toFixed(2);
+                                        if (dist < 95) {
+                                            var alpha = ((1 - dist / 95) * 0.32).toFixed(2);
                                             ctx.beginPath();
                                             ctx.moveTo(pi.x, pi.y);
                                             ctx.lineTo(pj.x, pj.y);
