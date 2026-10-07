@@ -1,0 +1,53 @@
+name: CI Portfolio Test & Integrity Suite
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  validate:
+    name: Run Automated Tests & Syntax Validation
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js Environment
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup Python Environment
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Run CI Test Suite
+        run: |
+          python3 scripts/ci_test.py
+
+      - name: V8 Compiler AST Syntax Validation
+        run: |
+          node -e '
+          const fs = require("fs");
+          const vm = require("vm");
+          const html = fs.readFileSync("portfolio/index.html", "utf8");
+          const scriptMatches = [...html.matchAll(/<script(?![^>]*src=)[^>]*>([\s\S]*?)<\/script>/gi)];
+          console.log(`Auditing ${scriptMatches.length} inline JavaScript blocks with V8 Engine...`);
+          scriptMatches.forEach((match, idx) => {
+            const code = match[1].trim();
+            if (code) {
+              try {
+                new vm.Script(code);
+                console.log(`  [V8 PASS] Script block #${idx + 1} is syntactically sound`);
+              } catch (err) {
+                console.error(`  [V8 FAIL] Syntax error in script #${idx + 1}:`, err.message);
+                process.exit(1);
+              }
+            }
+          });
+          console.log("All scripts verified valid by V8 compiler!");
+          '
