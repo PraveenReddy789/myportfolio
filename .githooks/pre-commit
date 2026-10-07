@@ -1,0 +1,27 @@
+#!/bin/sh
+# ==============================================================================
+# Git Pre-Commit Hook: Automated Quality & Syntax Gatekeeper
+# Runs automatically whenever `git commit` is executed.
+# ==============================================================================
+
+echo ""
+echo "🚀 [Git Pre-Commit Hook] Running local integrity & syntax tests..."
+
+# Run the Python CI/CD test suite
+python3 scripts/ci_test.py
+
+RESULT=$?
+
+if [ $RESULT -ne 0 ]; then
+    echo ""
+    echo "❌ [PRE-COMMIT BLOCKED] Commit was rejected due to test failures!"
+    echo "   Please fix the errors listed above and re-commit."
+    echo "   (Emergency bypass: git commit --no-verify)"
+    echo ""
+    exit 1
+fi
+
+echo ""
+echo "✨ [PRE-COMMIT PASSED] All checks passed! Proceeding with commit..."
+echo ""
+exit 0
