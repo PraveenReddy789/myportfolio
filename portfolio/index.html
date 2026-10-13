@@ -5240,6 +5240,39 @@
             }
             function playClip(l, k) { return playSrc(clipSrc(l, k)) }
             var activeUtt = null;
+            /* Score a voice for naturalness: premium cloud voices >> enhanced >> standard */
+            function voiceQuality(v) {
+                var n = (v.name || '').toLowerCase(), s = 0;
+                if (/premium/i.test(n)) s += 50;
+                if (/enhanced/i.test(n)) s += 40;
+                if (/natural|neural|wavenet|studio/i.test(n)) s += 30;
+                if (/online/i.test(n)) s += 20;
+                if (/google|apple|microsoft|samantha|karen|moira|rishi|veena|lekha/i.test(n)) s += 15;
+                if (!v.localService) s += 10; /* cloud voices are generally higher quality */
+                if (/siri|compact|espeak/i.test(n)) s -= 40; /* avoid robotic engines */
+                return s;
+            }
+            function pickBestVoice(l, ag) {
+                var pool = pickV(l);
+                if (!pool || !pool.length) {
+                    /* If no language-specific voice, try any English voice (for en demos) */
+                    if (l === 'en') pool = vcs.filter(function (v) { return /^en/i.test(v.lang) });
+                    if (!pool || !pool.length) return null;
+                }
+                /* Sort by quality descending */
+                pool = pool.slice().sort(function (a, b) { return voiceQuality(b) - voiceQuality(a) });
+                /* Try to match gender preference */
+                var genderRe = ag
+                    ? (fcm ? /male|prabhat|mohan|valluvar|midhun|gagan|niranjan|rishi/i
+                           : /female|neerja|shruti|pallavi|sobhana|sapna|dhwani|veena|lekha|samantha/i)
+                    : null;
+                if (genderRe) {
+                    for (var i = 0; i < pool.length; i++) {
+                        if (genderRe.test(pool[i].name)) return pool[i];
+                    }
+                }
+                return pool[0]; /* best quality available */
+            }
             function sayTTS(t, ag, l) {
                 if (typeof window === 'undefined' || !window.speechSynthesis) return Promise.resolve(false);
                 return new Promise(function (res) {
@@ -5248,19 +5281,12 @@
                         var text = ttsFix(l, t);
                         var u = new SpeechSynthesisUtterance(text);
                         activeUtt = u;
-                        var vList = pickV(l);
-                        if (vList && vList.length > 0) {
-                            var prefGender = ag ? (fcm ? /male|prabhat|mohan|valluvar|midhun|gagan|niranjan/i : /female|neerja|shruti|pallavi|sobhana|sapna|dhwani/i) : null;
-                            var chosen = null;
-                            if (prefGender) {
-                                for (var i = 0; i < vList.length; i++) {
-                                    if (prefGender.test(vList[i].name)) { chosen = vList[i]; break; }
-                                }
-                            }
-                            u.voice = chosen || vList[0];
-                        }
-                        u.rate = 0.95;
-                        u.pitch = 1.0;
+                        var best = pickBestVoice(l, ag);
+                        if (best) u.voice = best;
+                        /* Slightly slower & warmer for a natural phone call feel */
+                        u.rate = 0.92;
+                        u.pitch = 1.02;
+                        u.volume = 1.0;
                         var done = false, timer = null;
                         function finish(ok) {
                             if (done) return;
@@ -5275,7 +5301,7 @@
                         timer = setTimeout(function () {
                             try { window.speechSynthesis.cancel() } catch (e) { }
                             finish(true);
-                        }, 12000);
+                        }, 15000);
                         window.speechSynthesis.speak(u);
                     } catch (e) {
                         res(false);
@@ -5414,7 +5440,7 @@
                     ? 'http://127.0.0.1:8000/tts'
                     : '/api/tts'
             ) : '';
-            var TTS_WAIT = 3000; /* max ms to wait for dynamic voice so conversation never hangs */
+            var TTS_WAIT = 8000; /* max ms to wait for dynamic neural voice — generous so we almost always get the real voice */
             var cname = '', cgen = 'M', gtouch = false, fcm = false, PC = {}, formOn = false, warmed = false;
             var HON = {
                 en: { M: 'Mr. {n}', F: 'Ms. {n}' },
