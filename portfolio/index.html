@@ -5110,13 +5110,49 @@
                 'swathi', 'swati', 'deepika', 'pooja', 'puja', 'anjali', 'meena',
                 'praveen', 'rahul', 'suresh', 'ramesh', 'anil', 'rajesh', 'vikram', 'karthik'
             ];
+            var NAME_ALIASES = {
+                'anita': 'anitha',
+                'swati': 'swathi',
+                'puja': 'pooja',
+                'pravin': 'praveen',
+                'parveen': 'praveen',
+                'kartik': 'karthik',
+                'karthick': 'karthik',
+                'bhavna': 'bhavana',
+                'deepa': 'deepika'
+            };
+            function resolveKnownName(nm) {
+                if (!nm) return null;
+                var str = String(nm).trim().toLowerCase();
+                if (!str) return null;
+                str = str.replace(/^(mr|mrs|ms|miss|dr|prof|shri|sri|smt)\.?\s+/i, '');
+                function matchToken(tok) {
+                    if (!tok) return null;
+                    var clean = tok.replace(/[^a-z]/g, '');
+                    if (!clean) return null;
+                    if (NAME_ALIASES[clean]) clean = NAME_ALIASES[clean];
+                    if (PRE_NAMES.indexOf(clean) >= 0) {
+                        return (clean === 'anita' ? 'anitha' : (clean === 'swati' ? 'swathi' : (clean === 'puja' ? 'pooja' : clean)));
+                    }
+                    return null;
+                }
+                var whole = matchToken(str);
+                if (whole) return whole;
+                var words = str.split(/\s+/);
+                if (words.length > 0) {
+                    var first = matchToken(words[0]);
+                    if (first) return first;
+                }
+                for (var i = 1; i < words.length; i++) {
+                    var any = matchToken(words[i]);
+                    if (any) return any;
+                }
+                return null;
+            }
             function clipSrc(l, k) {
-                var raw = (cname || '').toLowerCase().replace(/[^a-z]/g, '');
-                if (raw === 'anita') raw = 'anitha';
-                if (raw === 'swati') raw = 'swathi';
-                if (raw === 'puja') raw = 'pooja';
-                if (cname && PRE_NAMES.indexOf(raw) >= 0 && (k === 0 || k === 4 || k === 6)) {
-                    return 'audio/' + l + '/names/' + raw + '/' + k + '.mp3';
+                var kn = resolveKnownName(cname);
+                if (kn && (k === 0 || k === 4 || k === 6)) {
+                    return 'audio/' + l + '/names/' + kn + '/' + k + '.mp3';
                 }
                 return 'audio/' + l + (fcm ? '/fc/' : '/') + k + '.mp3';
             }
@@ -5203,14 +5239,54 @@
                 });
             }
             function playClip(l, k) { return playSrc(clipSrc(l, k)) }
+            var activeUtt = null;
+            function sayTTS(t, ag, l) {
+                if (typeof window === 'undefined' || !window.speechSynthesis) return Promise.resolve(false);
+                return new Promise(function (res) {
+                    try {
+                        window.speechSynthesis.cancel();
+                        var text = ttsFix(l, t);
+                        var u = new SpeechSynthesisUtterance(text);
+                        activeUtt = u;
+                        var vList = pickV(l);
+                        if (vList && vList.length > 0) {
+                            var prefGender = ag ? (fcm ? /male|prabhat|mohan|valluvar|midhun|gagan|niranjan/i : /female|neerja|shruti|pallavi|sobhana|sapna|dhwani/i) : null;
+                            var chosen = null;
+                            if (prefGender) {
+                                for (var i = 0; i < vList.length; i++) {
+                                    if (prefGender.test(vList[i].name)) { chosen = vList[i]; break; }
+                                }
+                            }
+                            u.voice = chosen || vList[0];
+                        }
+                        u.rate = 0.95;
+                        u.pitch = 1.0;
+                        var done = false, timer = null;
+                        function finish(ok) {
+                            if (done) return;
+                            done = true;
+                            clearTimeout(timer);
+                            u.onend = u.onerror = null;
+                            if (activeUtt === u) activeUtt = null;
+                            res(ok);
+                        }
+                        u.onend = function () { finish(true) };
+                        u.onerror = function () { finish(false) };
+                        timer = setTimeout(function () {
+                            try { window.speechSynthesis.cancel() } catch (e) { }
+                            finish(true);
+                        }, 12000);
+                        window.speechSynthesis.speak(u);
+                    } catch (e) {
+                        res(false);
+                    }
+                });
+            }
             async function say(t, ag, l, k, pers) {
                 if (!snd) return false;
-                var raw = (cname || '').toLowerCase().replace(/[^a-z]/g, '');
-                if (raw === 'anita') raw = 'anitha';
-                if (raw === 'swati') raw = 'swathi';
-                if (raw === 'puja') raw = 'pooja';
+                var kn = resolveKnownName(cname);
                 var isCustomerTurn = (k % 2 !== 0);
-                var hasLocalClip = (!cname) || (cname && PRE_NAMES.indexOf(raw) >= 0) || isCustomerTurn;
+                var hasLocalClip = (!cname) || (kn && (k === 0 || k === 4 || k === 6)) || isCustomerTurn || (k === 2);
 
                 // Priority 1: Instant local pre-rendered audio (0ms latency!)
                 if (hasLocalClip) {
@@ -5218,19 +5294,21 @@
                     if (ok) return true;
                 }
 
-                // Priority 2: Custom dynamic neural TTS (only for unfamiliar novel names)
+                // Priority 2: Custom dynamic neural TTS (for unfamiliar novel names)
                 if (pers && PC[k]) {
                     var okp = await playCustom(k);
                     if (okp) return true;
                 }
 
-                // Priority 3: Fallback to standard generic clip
+                // Priority 3: Natural browser Speech Synthesis (so custom entered names are NEVER skipped!)
+                if (pers && cname) {
+                    var okTTS = await sayTTS(t, ag, l);
+                    if (okTTS) return true;
+                }
+
+                // Priority 4: Fallback to standard generic clip
                 var okg = await playSrc('audio/' + l + (fcm ? '/fc/' : '/') + k + '.mp3');
                 return okg;
-            }
-            function sayTTS(t, ag, l) {
-                /* Never fall back to robotic browser speechSynthesis */
-                return Promise.resolve(false);
             }
             function ctx() {
                 if (!ac) {
@@ -5392,7 +5470,16 @@
                 return v.split(' ').map(function (w) { return w.charAt(0).toUpperCase() + w.slice(1) }).join(' ')
             }
             var FEMN = ' priya divya anitha anita sravani shravani lakshmi laxmi swathi swati sowmya soumya sneha pooja puja deepika deepa kavya kavitha kavita anjali anusha ananya aishwarya bhavana bhavani meena meera mounika monika harika harini haritha jyothi jyoti keerthi kirthi lavanya madhavi manasa nandini neha nikitha nikita padma pavani pallavi prathyusha pratyusha radha rajani ramya rekha renuka roja sandhya sangeetha sangeeta saritha sarita shilpa sirisha shirisha shreya shruthi shruti sita seetha sridevi sunitha sunita supriya swapna tejaswini vani varsha vasavi vidya vineela vinitha yamini uma usha geetha geeta gayathri gayatri durga bhargavi archana aparna amrutha amrita alekhya akhila ashwini bindu charitha chandana hema indu isha jahnavi kalyani kamala komali sushma sirivennela mamatha mamata manjula madhuri nirmala parvathi parvati ';
-            function guessF(nm) { var w = nm.toLowerCase().split(' ')[0].replace(/[^a-z]/g, ''); if (!w) return false; return FEMN.indexOf(' ' + w + ' ') >= 0 || /(devi|rani|kumari|bai|priya|vathi|vati|mma|lakshmi|laxmi|jyothi)$/.test(w) }
+            function guessF(nm) {
+                var kn = resolveKnownName(nm);
+                if (kn) {
+                    var FEMALE_KNOWN = ['neha', 'priya', 'bhavana', 'bhavani', 'divya', 'sneha', 'kavya', 'anitha', 'anita', 'swathi', 'swati', 'deepika', 'pooja', 'puja', 'anjali', 'meena'];
+                    return FEMALE_KNOWN.indexOf(kn) >= 0;
+                }
+                var w = String(nm || '').toLowerCase().replace(/^(mr|mrs|ms|miss|dr|prof|shri|sri|smt)\.?\s+/i, '').split(/\s+/)[0].replace(/[^a-z]/g, '');
+                if (!w) return false;
+                return FEMN.indexOf(' ' + w + ' ') >= 0 || /(devi|rani|kumari|bai|priya|vathi|vati|mma|lakshmi|laxmi|jyothi)$/.test(w);
+            }
             var PRE_GEN_ADDR = {
                 praveen: { en: 'Mr. Praveen', te: 'ప్రవీణ్ గారు', ta: 'பிரவீன் அவர்களே', ml: 'ശ്രീ പ്രവീൺ', gu: 'શ્રી પ્રવીણ', kn: 'ಪ್ರವೀಣ್ ಅವರೇ' },
                 rahul: { en: 'Mr. Rahul', te: 'రాహుల్ గారు', ta: 'ராகுல் அவர்களே', ml: 'ശ്രീ രാഹുൽ', gu: 'શ્રી રાહુલ', kn: 'ರಾಹುಲ್ ಅವರೇ' },
@@ -5417,12 +5504,9 @@
                 karthik: { en: 'Mr. Karthik', te: 'కార్తీక్ గారు', ta: 'கார்த்திக் அவர்களே', ml: 'ശ്രീ കാർത്തിക്', gu: 'શ્રી કાર્તિક', kn: 'ಕಾರ್ತಿಕ್ ಅವರೇ' }
             };
             function addrFor(L, nm) {
-                var raw = (nm || '').toLowerCase().replace(/[^a-z]/g, '');
-                if (raw === 'anita') raw = 'anitha';
-                if (raw === 'swati') raw = 'swathi';
-                if (raw === 'puja') raw = 'pooja';
-                if (PRE_GEN_ADDR[raw] && PRE_GEN_ADDR[raw][L]) {
-                    return PRE_GEN_ADDR[raw][L];
+                var kn = resolveKnownName(nm);
+                if (kn && PRE_GEN_ADDR[kn] && PRE_GEN_ADDR[kn][L]) {
+                    return PRE_GEN_ADDR[kn][L];
                 }
                 var h = HON[L] || HON.en, t = typeof h === 'string' ? h : (h[cgen] || h.M);
                 var scriptNm = (L === 'en') ? nm : (xlit(nm, L) || nm);
@@ -5499,16 +5583,13 @@
                 r.lines[3] = rz[L] || rz.en;
                 r.en[3] = rz.en;
                 if (!cname) return r;
-                var raw = (cname || '').toLowerCase().replace(/[^a-z]/g, '');
-                if (raw === 'anita') raw = 'anitha';
-                if (raw === 'swati') raw = 'swathi';
-                if (raw === 'puja') raw = 'pooja';
+                var kn = resolveKnownName(cname);
                 r.name = cname;
                 r.rec = addrFor('en', cname);
                 var localizedAddr = addrFor(L, cname);
                 r.lines = inject(r.lines, localizedAddr);
                 r.en = inject(r.en, r.rec);
-                if (PRE_NAMES.indexOf(raw) < 0) {
+                if (!kn) {
                     r.idx = [0, 4, 6];
                 }
                 return r;
