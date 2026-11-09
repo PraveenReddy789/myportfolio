@@ -440,6 +440,12 @@
             border-color: rgba(59, 130, 246, 0.3);
         }
 
+        .job-badge.freelance {
+            background: rgba(16, 185, 129, 0.1);
+            color: #10b981;
+            border-color: rgba(16, 185, 129, 0.3);
+        }
+
         .job-head .when {
             color: var(--muted);
             font-size: 14.5px;
@@ -4319,6 +4325,18 @@
         <div class="wrap">
             <h2>Experience</h2>
             <div class="rule"><i></i><b></b></div>
+            <!-- Freelance Role -->
+            <div class="job">
+                <div class="job-head">
+                    <div class="job-info">
+                        <h3>AI Generalist - Contract<span class="job-badge freelance">Freelance</span></h3>
+                        <div class="when">Mercor <span class="sep">&bull;</span> Oct 2026
+                            to Present <span class="sep">&bull;</span> Remote</div>
+                    </div>
+                    <div class="job-metrics-pill">
+                    </div>
+                </div>
+            </div>
             <!-- Full-Time Role -->
             <div class="job">
                 <div class="job-head">
@@ -4388,7 +4406,8 @@
                                     <h4>Extract 20+ Structured Attributes with Gemini</h4>
                                     <p>Extract <strong>20+ structured attributes</strong> from every call record with
                                         <strong>Gemini on Vertex AI</strong>, using <strong>heuristic
-                                            pre-filtering</strong> to cut unnecessary LLM calls.</p>
+                                            pre-filtering</strong> to cut unnecessary LLM calls.
+                                    </p>
                                     <div class="xp-tags">
                                         <span>Gemini 1.5</span>
                                         <span>Vertex AI</span>
@@ -4423,12 +4442,14 @@
                                             <span class="col-title">MODERN</span>
                                             <div class="target-pill"><span class="check">✓</span>
                                                 <span><b>PostgreSQL</b> <small class="pill-note">9-tbl
-                                                        star</small></span></div>
+                                                        star</small></span>
+                                            </div>
                                             <div class="target-pill"><span class="check">✓</span> <span><b>Apache
                                                         Kafka</b> <small class="pill-note">events</small></span></div>
                                             <div class="target-pill"><span class="check">✓</span>
                                                 <span><b>Migrations</b> <small
-                                                        class="pill-note">versioned</small></span></div>
+                                                        class="pill-note">versioned</small></span>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -4436,7 +4457,8 @@
                                     <h4>PostgreSQL &amp; Kafka Event-Driven Architecture</h4>
                                     <p>Moved the platform from <strong>MongoDB, BigQuery and Pub/Sub</strong> to an
                                         event-driven <strong>PostgreSQL and Kafka</strong> design, with a
-                                        <strong>9-table star schema</strong> and versioned migrations.</p>
+                                        <strong>9-table star schema</strong> and versioned migrations.
+                                    </p>
                                     <div class="xp-tags">
                                         <span>PostgreSQL</span>
                                         <span>Apache Kafka</span>
@@ -5264,7 +5286,7 @@
                 /* Try to match gender preference */
                 var genderRe = ag
                     ? (fcm ? /male|prabhat|mohan|valluvar|midhun|gagan|niranjan|rishi/i
-                           : /female|neerja|shruti|pallavi|sobhana|sapna|dhwani|veena|lekha|samantha/i)
+                        : /female|neerja|shruti|pallavi|sobhana|sapna|dhwani|veena|lekha|samantha/i)
                     : null;
                 if (genderRe) {
                     for (var i = 0; i < pool.length; i++) {
